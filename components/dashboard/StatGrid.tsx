@@ -13,12 +13,12 @@ interface StatGridProps {
 export function StatGrid({
   indicatorCount,
   evidenceCount,
-  pendingCount = 6,
+  pendingCount = 0,
   taskCount,
 }: StatGridProps) {
-  const evidencePercent = indicatorCount > 0 ? Math.min(100, Math.round((evidenceCount / indicatorCount) * 100)) : 66.7;
-  const pendingPercent = indicatorCount > 0 ? Math.min(100, Math.round((pendingCount / indicatorCount) * 100)) : 20.8;
-  const taskPercent = taskCount > 0 ? Math.min(100, Math.round((taskCount / (taskCount + 10)) * 100)) : 16.7;
+  const evidencePercent = indicatorCount > 0 ? Math.min(100, Math.round((evidenceCount / indicatorCount) * 100)) : 0;
+  const pendingPercent = indicatorCount > 0 ? Math.min(100, Math.round((pendingCount / indicatorCount) * 100)) : 0;
+  const taskPercent = taskCount > 0 ? Math.min(100, Math.round((taskCount / (taskCount + 5)) * 100)) : 0;
 
   return (
     <section className="stat-grid">
@@ -27,15 +27,15 @@ export function StatGrid({
         tone="blue"
         label="ตัวชี้วัดทั้งหมด"
         value={indicatorCount}
-        note="ครอบคลุมทั้ง 3 มาตรฐาน"
-        progress={72}
+        note="เกณฑ์ประกันคุณภาพ 3 ด้าน"
+        progress={indicatorCount > 0 ? 100 : 0}
       />
       <StatCard
         icon={<FileCheck2 />}
         tone="green"
         label="หลักฐานที่เชื่อมโยงแล้ว"
         value={evidenceCount}
-        note={`${evidencePercent}% ของตัวชี้วัด`}
+        note={evidenceCount > 0 ? `${evidencePercent}% ของตัวชี้วัด` : "เริ่มต้นอัปโหลดหลักฐาน"}
         progress={evidencePercent}
       />
       <StatCard
@@ -43,7 +43,7 @@ export function StatGrid({
         tone="orange"
         label="รอตรวจสอบ / รออนุมัติ"
         value={pendingCount}
-        note={`${pendingPercent}% รอประเมินรอบนี้`}
+        note={pendingCount > 0 ? `${pendingPercent}% รอประเมินรอบนี้` : "ไม่มีรายการรออนุมัติ"}
         progress={pendingPercent}
       />
       <StatCard
@@ -51,7 +51,7 @@ export function StatGrid({
         tone="red"
         label="งานที่ต้องดำเนินการ"
         value={taskCount}
-        note="ติดตามงานคงค้างในระบบ"
+        note={taskCount > 0 ? `${taskCount} ภารกิจคงค้างในระบบ` : "ไม่มีงานคงค้างในระบบ"}
         progress={taskPercent}
       />
     </section>

@@ -24,51 +24,16 @@ import { SettingsModule } from "@/components/modules/SettingsModule";
 import { LoginModal } from "@/components/auth/LoginModal";
 import { InvitePasswordModal } from "@/components/auth/InvitePasswordModal";
 
-const initialDemoTasks: Task[] = [
-  {
-    id: "t1",
-    title: "จัดเตรียมเอกสารร่องรอยตัวชี้วัด 1.4 ทักษะดิจิทัล",
-    status: "in_progress",
-    due_at: "2025-03-15T00:00:00+07:00",
-    priority: "high",
-    assignee_name: "ครูผู้สอนคอมพิวเตอร์",
-  },
-  {
-    id: "t2",
-    title: "ตรวจสอบความครบถ้วนของแฟ้มสะสมงานมาตรฐานที่ 2",
-    status: "in_progress",
-    due_at: "2025-03-18T00:00:00+07:00",
-    priority: "normal",
-    assignee_name: "ฝ่ายบริหารทั่วไป",
-  },
-  {
-    id: "t3",
-    title: "บันทึกผลการประเมินตนเอง (SAR) ภาคเรียนที่ 2",
-    status: "pending",
-    due_at: "2025-03-20T00:00:00+07:00",
-    priority: "normal",
-    assignee_name: "คณะทำงานประกันคุณภาพ",
-  },
-  {
-    id: "t4",
-    title: "เตรียมเอกสารสรุปผลสัมฤทธิ์รับการประเมินภายนอก (สมศ.)",
-    status: "submitted",
-    due_at: "2025-03-25T00:00:00+07:00",
-    priority: "urgent",
-    assignee_name: "หัวหน้าฝ่ายวิชาการ",
-  },
-];
-
-const initialDemoIndicators: Indicator[] = [
+const standardEducationIndicators: Indicator[] = [
   {
     id: "i1",
     code: "1.1",
     title_th: "ผู้เรียนมีพัฒนาการด้านร่างกาย สมวัย มีสุขนิสัยที่ดี",
     standard_id: "s1",
-    quality_level: "ดีเยี่ยม",
-    evidence_count: 4,
+    quality_level: "ยังไม่ประเมิน",
+    evidence_count: 0,
     responsible_person: "กลุ่มสาระฯ สุขศึกษาและพลศึกษา",
-    status: "completed",
+    status: "not_started",
     weight: 1.0,
   },
   {
@@ -76,10 +41,10 @@ const initialDemoIndicators: Indicator[] = [
     code: "1.2",
     title_th: "ผู้เรียนมีคุณธรรม จริยธรรม และค่านิยมที่พึงประสงค์",
     standard_id: "s1",
-    quality_level: "ดีเยี่ยม",
-    evidence_count: 5,
+    quality_level: "ยังไม่ประเมิน",
+    evidence_count: 0,
     responsible_person: "งานส่งเสริมคุณธรรม จริยธรรม",
-    status: "completed",
+    status: "not_started",
     weight: 1.0,
   },
   {
@@ -87,10 +52,10 @@ const initialDemoIndicators: Indicator[] = [
     code: "1.3",
     title_th: "ผู้เรียนมีความสามารถในการอ่าน คิดวิเคราะห์ และเขียน",
     standard_id: "s1",
-    quality_level: "ดี",
-    evidence_count: 3,
+    quality_level: "ยังไม่ประเมิน",
+    evidence_count: 0,
     responsible_person: "กลุ่มสาระฯ ภาษาไทย",
-    status: "pending_review",
+    status: "not_started",
     weight: 1.5,
   },
   {
@@ -98,8 +63,8 @@ const initialDemoIndicators: Indicator[] = [
     code: "1.4",
     title_th: "ผู้เรียนมีทักษะการใช้เทคโนโลยีดิจิทัลและการสื่อสาร",
     standard_id: "s1",
-    quality_level: "ปานกลาง",
-    evidence_count: 2,
+    quality_level: "ยังไม่ประเมิน",
+    evidence_count: 0,
     responsible_person: "กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี",
     status: "not_started",
     weight: 1.0,
@@ -109,10 +74,10 @@ const initialDemoIndicators: Indicator[] = [
     code: "1.5",
     title_th: "ผู้เรียนมีสุขภาวะทางจิตและสังคม มีผลสัมฤทธิ์ตามเกณฑ์",
     standard_id: "s1",
-    quality_level: "ดีเยี่ยม",
-    evidence_count: 6,
+    quality_level: "ยังไม่ประเมิน",
+    evidence_count: 0,
     responsible_person: "งานแนะแนวการศึกษา",
-    status: "completed",
+    status: "not_started",
     weight: 1.0,
   },
   {
@@ -120,10 +85,10 @@ const initialDemoIndicators: Indicator[] = [
     code: "2.1",
     title_th: "สถานศึกษามีเป้าหมาย วิสัยทัศน์ และพันธกิจที่ชัดเจน",
     standard_id: "s2",
-    quality_level: "ดีเยี่ยม",
-    evidence_count: 4,
+    quality_level: "ยังไม่ประเมิน",
+    evidence_count: 0,
     responsible_person: "ฝ่ายบริหารแผนงานและนโยบาย",
-    status: "completed",
+    status: "not_started",
     weight: 1.0,
   },
   {
@@ -131,10 +96,10 @@ const initialDemoIndicators: Indicator[] = [
     code: "3.1",
     title_th: "จัดการเรียนรู้ผ่านกระบวนการคิดและปฏิบัติจริง (Active Learning)",
     standard_id: "s3",
-    quality_level: "ดี",
-    evidence_count: 4,
+    quality_level: "ยังไม่ประเมิน",
+    evidence_count: 0,
     responsible_person: "ฝ่ายพัฒนาวิชาการและครูผู้สอนทุกคน",
-    status: "completed",
+    status: "not_started",
     weight: 1.5,
   },
 ];
@@ -166,7 +131,7 @@ export default function DashboardPage() {
   const [invitePasswordConfirm, setInvitePasswordConfirm] = useState("");
   const [invitePasswordMessage, setInvitePasswordMessage] = useState("");
 
-  // Live Data states
+  // Live Data states (Clean Production State)
   const [school, setSchool] = useState<School | null>({
     id: "sch-1",
     name: "โรงเรียนเทศบาล ๑ บ้านกลาง",
@@ -174,11 +139,11 @@ export default function DashboardPage() {
     province: "จังหวัดลำพูน",
     affiliation: "สังกัดเทศบาลตำบลบ้านกลาง กรมส่งเสริมการปกครองท้องถิ่น",
   });
-  const [tasks, setTasks] = useState<Task[]>(initialDemoTasks);
-  const [indicators, setIndicators] = useState<Indicator[]>(initialDemoIndicators);
-  const [evidenceCount, setEvidenceCount] = useState(32);
-  const [taskCount, setTaskCount] = useState(initialDemoTasks.length);
-  const [indicatorCount, setIndicatorCount] = useState(initialDemoIndicators.length);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [indicators, setIndicators] = useState<Indicator[]>(standardEducationIndicators);
+  const [evidenceCount, setEvidenceCount] = useState(0);
+  const [taskCount, setTaskCount] = useState(0);
+  const [indicatorCount, setIndicatorCount] = useState(standardEducationIndicators.length);
 
   const loadData = useCallback(async (sb: SupabaseClient) => {
     try {
@@ -207,7 +172,7 @@ export default function DashboardPage() {
         indicatorsCountRes.error;
 
       if (firstError) {
-        console.warn("Supabase live read message (using structured fallback):", firstError.message);
+        console.warn("Supabase live read message (using clean initial state):", firstError.message);
         setLoadState("live");
         return;
       }
@@ -215,13 +180,13 @@ export default function DashboardPage() {
       if (schoolsRes.data) {
         setSchool(schoolsRes.data as School);
       }
-      if (typeof evidenceRes.count === "number" && evidenceRes.count > 0) {
+      if (typeof evidenceRes.count === "number") {
         setEvidenceCount(evidenceRes.count);
       }
-      if (tasksRes.data && tasksRes.data.length > 0) {
+      if (tasksRes.data) {
         setTasks(tasksRes.data as Task[]);
       }
-      if (typeof tasksCountRes.count === "number" && tasksCountRes.count > 0) {
+      if (typeof tasksCountRes.count === "number") {
         setTaskCount(tasksCountRes.count);
       }
       if (indicatorsRes.data && indicatorsRes.data.length > 0) {

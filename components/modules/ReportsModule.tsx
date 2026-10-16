@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import { FileText, Printer, Download, CheckCircle, CheckCircle2 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { getSupabase } from "@/lib/supabase";
 import type { School, Indicator } from "@/types/database";
 import { useNotification } from "@/components/ui/NotificationProvider";
 
@@ -28,42 +29,42 @@ interface StandardSummary {
   }>;
 }
 
-const reportStandards: StandardSummary[] = [
+const cleanInitialReportStandards: StandardSummary[] = [
   {
     standardCode: "มาตรฐานที่ 1",
     standardName: "คุณภาพของผู้เรียน",
-    score: 4.42,
-    quality: "ดีเลิศ",
-    evidenceStatus: "เอกสารร่องรอยครบถ้วน (20 รายการ)",
+    score: 0,
+    quality: "รอการประเมิน",
+    evidenceStatus: "ยังไม่มีเอกสารแนบ",
     indicators: [
-      { code: "1.1", title: "ผู้เรียนมีพัฒนาการด้านร่างกาย สมวัย มีสุขนิสัยที่ดี", score: 4.5, quality: "ยอดเยี่ยม" },
-      { code: "1.2", title: "ผู้เรียนมีคุณธรรม จริยธรรม และค่านิยมที่พึงประสงค์", score: 4.8, quality: "ยอดเยี่ยม" },
-      { code: "1.3", title: "ผู้เรียนมีความสามารถในการอ่าน คิดวิเคราะห์ และเขียน", score: 4.2, quality: "ดีเลิศ" },
-      { code: "1.4", title: "ผู้เรียนมีทักษะการใช้เทคโนโลยีดิจิทัลและการสื่อสาร", score: 4.0, quality: "ดีเลิศ" },
-      { code: "1.5", title: "ผู้เรียนมีสุขภาวะทางจิตและสังคม มีผลสัมฤทธิ์ตามเกณฑ์", score: 4.6, quality: "ยอดเยี่ยม" },
+      { code: "1.1", title: "ผู้เรียนมีพัฒนาการด้านร่างกาย สมวัย มีสุขนิสัยที่ดี", score: 0, quality: "รอการประเมิน" },
+      { code: "1.2", title: "ผู้เรียนมีคุณธรรม จริยธรรม และค่านิยมที่พึงประสงค์", score: 0, quality: "รอการประเมิน" },
+      { code: "1.3", title: "ผู้เรียนมีความสามารถในการอ่าน คิดวิเคราะห์ และเขียน", score: 0, quality: "รอการประเมิน" },
+      { code: "1.4", title: "ผู้เรียนมีทักษะการใช้เทคโนโลยีดิจิทัลและการสื่อสาร", score: 0, quality: "รอการประเมิน" },
+      { code: "1.5", title: "ผู้เรียนมีสุขภาวะทางจิตและสังคม มีผลสัมฤทธิ์ตามเกณฑ์", score: 0, quality: "รอการประเมิน" },
     ],
   },
   {
     standardCode: "มาตรฐานที่ 2",
     standardName: "กระบวนการบริหารและการจัดการ",
-    score: 4.65,
-    quality: "ยอดเยี่ยม",
-    evidenceStatus: "เอกสารร่องรอยครบถ้วน (12 รายการ)",
+    score: 0,
+    quality: "รอการประเมิน",
+    evidenceStatus: "ยังไม่มีเอกสารแนบ",
     indicators: [
-      { code: "2.1", title: "เป้าหมาย วิสัยทัศน์ และพันธกิจที่กำหนดชัดเจน สอดคล้องบริบท", score: 4.7, quality: "ยอดเยี่ยม" },
-      { code: "2.2", title: "ระบบบริหารจัดการคุณภาพของสถานศึกษาที่เป็นระบบ", score: 4.6, quality: "ยอดเยี่ยม" },
-      { code: "2.3", title: "การดำเนินงานพัฒนาวิชาการที่เน้นคุณภาพผู้เรียนรอบด้าน", score: 4.5, quality: "ยอดเยี่ยม" },
+      { code: "2.1", title: "เป้าหมาย วิสัยทัศน์ และพันธกิจที่กำหนดชัดเจน สอดคล้องบริบท", score: 0, quality: "รอการประเมิน" },
+      { code: "2.2", title: "ระบบบริหารจัดการคุณภาพของสถานศึกษาที่เป็นระบบ", score: 0, quality: "รอการประเมิน" },
+      { code: "2.3", title: "การดำเนินงานพัฒนาวิชาการที่เน้นคุณภาพผู้เรียนรอบด้าน", score: 0, quality: "รอการประเมิน" },
     ],
   },
   {
     standardCode: "มาตรฐานที่ 3",
     standardName: "กระบวนการจัดการเรียนการสอนที่เน้นผู้เรียนเป็นสำคัญ",
-    score: 4.45,
-    quality: "ดีเลิศ",
-    evidenceStatus: "เอกสารร่องรอยครบถ้วน (10 รายการ)",
+    score: 0,
+    quality: "รอการประเมิน",
+    evidenceStatus: "ยังไม่มีเอกสารแนบ",
     indicators: [
-      { code: "3.1", title: "จัดการเรียนรู้ผ่านกระบวนการคิดและปฏิบัติจริง (Active Learning)", score: 4.4, quality: "ดีเลิศ" },
-      { code: "3.2", title: "ใช้สื่อ เทคโนโลยีสารสนเทศ และแหล่งเรียนรู้ที่เอื้อต่อการเรียนรู้", score: 4.5, quality: "ยอดเยี่ยม" },
+      { code: "3.1", title: "จัดการเรียนรู้ผ่านกระบวนการคิดและปฏิบัติจริง (Active Learning)", score: 0, quality: "รอการประเมิน" },
+      { code: "3.2", title: "ใช้สื่อ เทคโนโลยีสารสนเทศ และแหล่งเรียนรู้ที่เอื้อต่อการเรียนรู้", score: 0, quality: "รอการประเมิน" },
     ],
   },
 ];
@@ -71,8 +72,14 @@ const reportStandards: StandardSummary[] = [
 export function ReportsModule({
   school,
   academicYear = "2567",
+  client,
 }: ReportsModuleProps) {
   const { showToast } = useNotification();
+  const sb = client ?? getSupabase();
+
+  const [reportStandards, setReportStandards] = useState<StandardSummary[]>(cleanInitialReportStandards);
+  const [overallScore, setOverallScore] = useState("0.00");
+  const [overallQuality, setOverallQuality] = useState("รอการประเมิน");
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
@@ -80,6 +87,83 @@ export function ReportsModule({
   const affiliation = school?.affiliation ?? "สังกัดเทศบาลตำบลบ้านกลาง กรมส่งเสริมการปกครองท้องถิ่น";
   const province = school?.province ?? "จังหวัดลำพูน";
   const district = school?.district ?? "อำเภอเมืองลำพูน";
+
+  // Load live evaluations from Supabase if exist
+  useEffect(() => {
+    async function loadLiveEvaluations() {
+      if (!sb) return;
+      try {
+        const { data: evals } = await sb
+          .from("evaluations")
+          .select("self_score, level_quality, indicators(code, standard_id, title_th)");
+
+        if (evals && evals.length > 0) {
+          interface EvalRow {
+            self_score: number | string | null;
+            level_quality: string | null;
+            indicators: { code?: string; standard_id?: string; title_th?: string } | null;
+          }
+          const rawEvals = evals as unknown as EvalRow[];
+          const evalMap = new Map<string, { score: number; quality: string }>();
+
+          rawEvals.forEach((e) => {
+            if (e.indicators?.code) {
+              evalMap.set(e.indicators.code, {
+                score: typeof e.self_score === "number" ? e.self_score : parseFloat(String(e.self_score || 0)),
+                quality: e.level_quality || "รอการประเมิน",
+              });
+            }
+          });
+
+          let grandTotalScore = 0;
+          let grandIndicatorCount = 0;
+
+          const updated = cleanInitialReportStandards.map((std) => {
+            let stdSum = 0;
+            let stdCount = 0;
+
+            const updatedIndicators = std.indicators.map((ind) => {
+              const live = evalMap.get(ind.code);
+              if (live && live.score > 0) {
+                stdSum += live.score;
+                stdCount++;
+                grandTotalScore += live.score;
+                grandIndicatorCount++;
+                return { ...ind, score: live.score, quality: live.quality };
+              }
+              return ind;
+            });
+
+            const stdAvg = stdCount > 0 ? stdSum / stdCount : 0;
+            const stdQualityText =
+              stdAvg >= 4.5 ? "ยอดเยี่ยม" : stdAvg >= 3.75 ? "ดีเลิศ" : stdAvg >= 3.0 ? "ดี" : stdAvg >= 2.0 ? "ปานกลาง" : stdAvg > 0 ? "กำลังพัฒนา" : "รอการประเมิน";
+
+            return {
+              ...std,
+              score: stdAvg,
+              quality: stdQualityText,
+              evidenceStatus: stdCount > 0 ? `บันทึกแล้ว ${stdCount} ตัวชี้วัด` : "ยังไม่มีเอกสารแนบ",
+              indicators: updatedIndicators,
+            };
+          });
+
+          setReportStandards(updated);
+
+          if (grandIndicatorCount > 0) {
+            const finalAvg = grandTotalScore / grandIndicatorCount;
+            setOverallScore(finalAvg.toFixed(2));
+            setOverallQuality(
+              finalAvg >= 4.5 ? "ยอดเยี่ยม (Excellent)" : finalAvg >= 3.75 ? "ดีเลิศ (Very Good)" : finalAvg >= 3.0 ? "ดี (Good)" : "กำลังพัฒนา"
+            );
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load live evaluation summary for reports:", err);
+      }
+    }
+
+    void loadLiveEvaluations();
+  }, [sb]);
 
   // Print SAR to PDF or Printer
   const handlePrint = () => {
@@ -112,7 +196,7 @@ export function ReportsModule({
       });
 
       // Overall row
-      rows.push(["ภาพรวมสถานศึกษา", "รวมทั้ง 3 มาตรฐานการศึกษาขั้นพื้นฐาน", "4.51", "ยอดเยี่ยม", "พร้อมรับการตรวจประเมินภายนอก (สมศ.)"]);
+      rows.push(["ภาพรวมสถานศึกษา", "รวมทั้ง 3 มาตรฐานการศึกษาขั้นพื้นฐาน", overallScore, overallQuality, parseFloat(overallScore) > 0 ? "พร้อมรับการตรวจประเมินภายนอก (สมศ.)" : "อยู่ระหว่างการเก็บรวบรวมข้อมูล"]);
       rows.push([]);
 
       // Section 2: Detailed Indicators
@@ -271,16 +355,16 @@ export function ReportsModule({
             <tr style={{ background: "#f1f6fd", fontWeight: 700 }}>
               <td>ผลการประเมินภาพรวมทั้งสถานศึกษา</td>
               <td style={{ textAlign: "center", fontWeight: 800, fontSize: 15, color: "#0c3b77" }}>
-                4.51 / 5.00
+                {overallScore} / 5.00
               </td>
               <td style={{ textAlign: "center" }}>
                 <span className="pill-status good" style={{ fontWeight: 800, fontSize: 12, padding: "4px 10px" }}>
-                  ยอดเยี่ยม (Excellent)
+                  {overallQuality}
                 </span>
               </td>
               <td>
                 <span style={{ color: "#0f3a68", fontWeight: 700 }}>
-                  พร้อมรับการประเมินภายนอก (สมศ.)
+                  {parseFloat(overallScore) > 0 ? "พร้อมรับการประเมินภายนอก (สมศ.)" : "อยู่ระหว่างการเก็บรวบรวมข้อมูล"}
                 </span>
               </td>
             </tr>
@@ -307,7 +391,7 @@ export function ReportsModule({
                 <tr key={ind.code}>
                   <td style={{ textAlign: "center", fontWeight: 700, color: "#0f3a68" }}>{ind.code}</td>
                   <td>{ind.title}</td>
-                  <td style={{ textAlign: "center", fontWeight: 700 }}>{ind.score.toFixed(1)}</td>
+                  <td style={{ textAlign: "center", fontWeight: 700 }}>{ind.score > 0 ? ind.score.toFixed(1) : "-"}</td>
                   <td style={{ textAlign: "center" }}>
                     <span className="pill-status good">{ind.quality}</span>
                   </td>
@@ -327,38 +411,33 @@ export function ReportsModule({
             <strong style={{ color: "#1d4ed8", fontSize: 13, display: "block", marginBottom: 6 }}>
               จุดเด่นของสถานศึกษา (Strengths)
             </strong>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#334155", lineHeight: 1.8 }}>
-              <li>ผู้เรียนมีคุณธรรม จริยธรรม ระเบียบวินัย และสุขภาวะทางกายและจิตใจที่แข็งแรงสมวัย</li>
-              <li>การบริหารจัดการแบบมีส่วนร่วมเข้มแข็งระหว่างสถานศึกษาและเทศบาลตำบลบ้านกลาง</li>
-              <li>ครูผู้สอนทุกคนจัดทำแผนการเรียนรู้เชิงรุก (Active Learning) บูรณาการภูมิปัญญาท้องถิ่น</li>
-              <li>นำระบบศูนย์ประกันคุณภาพดิจิทัลมาใช้จัดเก็บหลักฐานและร่องรอยได้อย่างเป็นระบบ</li>
-            </ul>
+            <p style={{ margin: 0, fontSize: 12, color: "#334155", lineHeight: 1.8 }}>
+              (สรุปจุดเด่นจากการประเมินตนเองตามมาตรฐานที่ 1 - 3 ของสถานศึกษา)
+            </p>
           </div>
 
           <div style={{ border: "1px solid #fed7aa", borderRadius: 8, padding: 14, background: "#fffdf9" }}>
             <strong style={{ color: "#c2410c", fontSize: 13, display: "block", marginBottom: 6 }}>
               จุดที่ควรพัฒนา (Areas for Improvement)
             </strong>
-            <ul style={{ margin: 0, paddingLeft: 18, fontSize: 12, color: "#431407", lineHeight: 1.8 }}>
-              <li>ยกระดับผลสัมฤทธิ์การทดสอบระดับชาติ (O-NET) กลุ่มสาระฯ คณิตศาสตร์ และภาษาอังกฤษ</li>
-              <li>ส่งเสริมและขยายผลห้องเรียนดิจิทัลและการรู้เท่าทันเทคโนโลยี AI สำหรับผู้เรียน</li>
-              <li>เพิ่มการมีส่วนร่วมของภาคีเครือข่ายภาคเอกชนและชุมชนภายนอกในการพัฒนาสถานศึกษา</li>
-            </ul>
+            <p style={{ margin: 0, fontSize: 12, color: "#431407", lineHeight: 1.8 }}>
+              (สรุปจุดที่ควรพัฒนาและแผนการยกระดับคุณภาพการศึกษาต่อเนื่อง)
+            </p>
           </div>
         </div>
 
         {/* Section 4: Signatures */}
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 40, paddingTop: 20, borderTop: "1px solid #cbd5e1", textAlign: "center" }}>
           <div>
-            <div style={{ width: 160, borderBottom: "1px dotted #64748b", margin: "45px auto 8px" }} />
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>( นางสาวสมรักษ์ สอนดี )</div>
+            <div style={{ width: 180, borderBottom: "1px dotted #64748b", margin: "45px auto 8px" }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>( ............................................................ )</div>
             <div style={{ fontSize: 12, color: "#475569" }}>หัวหน้างานประกันคุณภาพการศึกษา</div>
             <div style={{ fontSize: 11, color: "var(--muted)" }}>{schoolName}</div>
           </div>
 
           <div>
-            <div style={{ width: 160, borderBottom: "1px dotted #64748b", margin: "45px auto 8px" }} />
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>( นายวิชาการ คุณภาพดี )</div>
+            <div style={{ width: 180, borderBottom: "1px dotted #64748b", margin: "45px auto 8px" }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b" }}>( ............................................................ )</div>
             <div style={{ fontSize: 12, color: "#475569" }}>ผู้อำนวยการสถานศึกษา</div>
             <div style={{ fontSize: 11, color: "var(--muted)" }}>{schoolName}</div>
           </div>

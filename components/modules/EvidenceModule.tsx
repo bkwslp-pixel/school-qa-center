@@ -30,73 +30,6 @@ interface EvidenceModuleProps {
   onEvidenceCountChange?: (count: number) => void;
 }
 
-const sampleEvidence: EvidenceRecord[] = [
-  {
-    id: "e1",
-    title: "รายงานผลการทดสอบระดับชาติขั้นพื้นฐาน (O-NET) ปีการศึกษา 2566",
-    description: "สรุปเปรียบเทียบค่าคะแนนเฉลี่ยระดับโรงเรียนกับระดับประเทศ",
-    evidence_type: "document",
-    file_path: "demo/onet-2566-summary.pdf",
-    file_size_bytes: 2450000,
-    academic_year: "2567",
-    status: "active",
-    uploader_name: "ฝ่ายวิชาการ",
-    indicator_code: "1.1",
-    created_at: "2025-02-10T10:30:00Z",
-  },
-  {
-    id: "e2",
-    title: "โครงการส่งเสริมคุณธรรม จริยธรรม และวิถีพุทธประจำโรงเรียน",
-    description: "ภาพกิจกรรมและรายงานสรุปประเมินความพึงพอใจโครงการ",
-    evidence_type: "image",
-    file_path: "demo/morality-project-photo.jpg",
-    file_size_bytes: 5800000,
-    academic_year: "2567",
-    status: "active",
-    uploader_name: "งานกิจกรรมพัฒนาผู้เรียน",
-    indicator_code: "1.2",
-    created_at: "2025-02-14T14:20:00Z",
-  },
-  {
-    id: "e3",
-    title: "โฟลเดอร์ร่องรอยการนิเทศภายในและการจัดการเรียนรู้เชิงรุก (Active Learning)",
-    description: "Google Drive Folder บันทึกแผนการสอนและคลิปวิดีโอการสอน",
-    evidence_type: "drive_file",
-    external_url: "https://drive.google.com/drive/folders/qa-banklang-active-learning",
-    academic_year: "2567",
-    status: "active",
-    uploader_name: "ฝ่ายพัฒนาวิชาการ",
-    indicator_code: "3.1",
-    created_at: "2025-02-18T09:15:00Z",
-  },
-  {
-    id: "e4",
-    title: "รายงานผลการประเมินความสามารถด้านการอ่าน (RT) ชั้น ป.1",
-    description: "ผลคะแนนการอ่านออกเสียงและการอ่านรู้เรื่อง",
-    evidence_type: "document",
-    file_path: "demo/rt-p1-results.pdf",
-    file_size_bytes: 1200000,
-    academic_year: "2567",
-    status: "active",
-    uploader_name: "ครูประจำชั้น ป.1",
-    indicator_code: "1.3",
-    created_at: "2025-02-22T11:00:00Z",
-  },
-  {
-    id: "e5",
-    title: "คู่มือแผนปฏิบัติการประจำปีและแผนพัฒนาคุณภาพการศึกษา 5 ปี",
-    description: "อนุมัติโดยคณะกรรมการสถานศึกษาขั้นพื้นฐาน",
-    evidence_type: "document",
-    file_path: "demo/strategic-plan-2566-2570.pdf",
-    file_size_bytes: 8400000,
-    academic_year: "2567",
-    status: "active",
-    uploader_name: "งานแผนงานและงบประมาณ",
-    indicator_code: "2.1",
-    created_at: "2025-03-01T15:45:00Z",
-  },
-];
-
 const fallbackIndicatorOptions = [
   { code: "1.1", label: "1.1 พัฒนาการด้านร่างกาย สมวัย มีสุขนิสัยที่ดี" },
   { code: "1.2", label: "1.2 คุณธรรม จริยธรรม และค่านิยมที่พึงประสงค์" },
@@ -118,7 +51,7 @@ export function EvidenceModule({
   const { showToast, showConfirm, showAlert } = useNotification();
   const sb = client ?? getSupabase();
 
-  const [evidenceList, setEvidenceList] = useState<EvidenceRecord[]>(sampleEvidence);
+  const [evidenceList, setEvidenceList] = useState<EvidenceRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
@@ -207,7 +140,7 @@ interface EvidenceDbRow {
   }> | null;
 }
 
-      if (data && data.length > 0) {
+      if (data) {
         const rawRows = data as unknown as EvidenceDbRow[];
         const mapped: EvidenceRecord[] = rawRows.map((item) => {
           // Extract linked indicator code if exists

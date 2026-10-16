@@ -105,7 +105,7 @@ export function TasksModule({
         return;
       }
 
-      if (data && data.length > 0) {
+      if (data) {
         const rawTasks = data as unknown as TaskDbRow[];
         const mapped: Task[] = rawTasks.map((t) => ({
           id: t.id,

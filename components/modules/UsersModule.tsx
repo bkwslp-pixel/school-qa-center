@@ -12,41 +12,6 @@ interface UsersModuleProps {
   school?: School | null;
 }
 
-const sampleUsers: Profile[] = [
-  {
-    id: "u1",
-    full_name: "นายวิชาการ คุณภาพดี",
-    position: "รองผู้อำนวยการฝ่ายวิชาการ",
-    department: "ฝ่ายบริหารวิชาการ",
-    phone: "053-581-xxx",
-    role: "admin",
-  },
-  {
-    id: "u2",
-    full_name: "นางสาวสมรักษ์ สอนดี",
-    position: "หัวหน้างานประกันคุณภาพ",
-    department: "กลุ่มงานบริหารทั่วไป",
-    phone: "053-581-xxx",
-    role: "school_leadership",
-  },
-  {
-    id: "u3",
-    full_name: "นายเก่งกล้า มุ่งมั่น",
-    position: "ครูชำนาญการพิเศษ",
-    department: "กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี",
-    phone: "081-234-xxxx",
-    role: "teacher",
-  },
-  {
-    id: "u4",
-    full_name: "ดร.ประเมินสุข วงศ์กว้าง",
-    position: "ผู้ทรงคุณวุฒิ / กรรมการประเมินภายนอก",
-    department: "คณะกรรมการประเมินภายนอก (สมศ.)",
-    phone: "089-876-xxxx",
-    role: "external_evaluator",
-  },
-];
-
 interface ProfileDbRow {
   id: string;
   full_name: string;
@@ -63,7 +28,7 @@ export function UsersModule({
 }: UsersModuleProps) {
   const sb = client ?? getSupabase();
 
-  const [userList, setUserList] = useState<Profile[]>(sampleUsers);
+  const [userList, setUserList] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -95,7 +60,7 @@ export function UsersModule({
         )
         .order("created_at", { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (!error && data) {
         const typedRows = data as unknown as ProfileDbRow[];
         const mapped: Profile[] = typedRows.map((p) => {
           const role = p.user_roles?.[0]?.role || "teacher";
@@ -285,6 +250,21 @@ export function UsersModule({
           <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)" }}>
             <Loader2 size={28} className="spinner" style={{ animation: "spin 1s linear infinite", margin: "0 auto 8px" }} />
             <p style={{ margin: 0, fontSize: 13 }}>กำลังโหลดรายชื่อบุคลากรจาก Supabase...</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "48px 20px", color: "var(--muted)" }}>
+            <Users size={40} color="#9bb4d0" style={{ margin: "0 auto 12px" }} />
+            <h3 style={{ margin: "0 0 6px", fontSize: 16, color: "#163a63" }}>ยังไม่มีรายชื่อบุคลากรในระบบ</h3>
+            <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--muted)" }}>
+              ท่านสามารถเริ่มต้นเพิ่มรายชื่อคุณครู หรือคณะกรรมการประกันคุณภาพ เพื่อกำหนดสิทธิ์การใช้งานได้ทันที
+            </p>
+            <button
+              className="primary-button"
+              style={{ margin: "0 auto", display: "inline-flex", alignItems: "center", gap: 6 }}
+              onClick={() => setShowInviteModal(true)}
+            >
+              <UserPlus size={16} /> เพิ่มบุคลากรคนแรก
+            </button>
           </div>
         ) : (
           <div className="table-scroll">
