@@ -16,6 +16,7 @@ import {
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import type { Task, School, Indicator } from "@/types/database";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface TaskDbRow {
   id: string;
@@ -49,6 +50,7 @@ export function TasksModule({
   indicators,
   onTasksChange,
 }: TasksModuleProps) {
+  const { showToast, showConfirm } = useNotification();
   const sb = client ?? getSupabase();
 
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
@@ -156,11 +158,20 @@ export function TasksModule({
         );
       }
 
+      showToast(
+        nextStatus === "completed"
+          ? `ทำงาน "${task.title}" เสร็จสมบูรณ์แล้ว`
+          : `ปรับสถานะงาน "${task.title}" กลับมาดำเนินการ`,
+        "success",
+        "อัปเดตสถานะ"
+      );
+
       if (onTasksChange) onTasksChange();
     } catch (err: unknown) {
       console.error("Toggle task error:", err);
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการอัปเดต";
       setStatusMessage({ text: msg, type: "error" });
+      showToast(msg, "error", "อัปเดตไม่สำเร็จ");
       setTimeout(() => setStatusMessage(null), 4000);
     } finally {
       setBusyId(null);
@@ -213,6 +224,7 @@ export function TasksModule({
         }
 
         setStatusMessage({ text: "สร้างภารกิจงานประกันคุณภาพใหม่เรียบร้อยแล้ว", type: "success" });
+        showToast(`สร้างภารกิจงาน "${newTitle.trim()}" สำเร็จ`, "success", "บันทึกสำเร็จ");
         await fetchTasks();
       } else {
         const newTask: Task = {
@@ -226,6 +238,7 @@ export function TasksModule({
         };
         setTasks([newTask, ...tasks]);
         setStatusMessage({ text: "เพิ่มงานตัวอย่างเรียบร้อย (Mock mode)", type: "success" });
+        showToast("เพิ่มงานตัวอย่างเรียบร้อย (Mock mode)", "success", "บันทึกสำเร็จ");
       }
 
       if (onTasksChange) onTasksChange();
@@ -238,38 +251,48 @@ export function TasksModule({
       console.error("Create task error:", err);
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการสร้างงาน";
       setStatusMessage({ text: msg, type: "error" });
+      showToast(msg, "error", "สร้างงานไม่สำเร็จ");
     } finally {
       setLoading(false);
       setTimeout(() => setStatusMessage(null), 5000);
     }
   };
 
-  // Delete Task
-  const handleDeleteTask = async (task: Task) => {
-    if (!confirm(`คุณต้องการลบงาน "${task.title}" ใช่หรือไม่?`)) return;
+  // Delete Task with Premium Confirm Modal
+  const handleDeleteTask = (task: Task) => {
+    showConfirm({
+      title: "ยืนยันการลบภารกิจงาน",
+      message: `คุณต้องการลบงาน "${task.title}" ออกจากระบบใช่หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้`,
+      confirmText: "ลบงาน",
+      cancelText: "ยกเลิก",
+      type: "danger",
+      onConfirm: async () => {
+        setBusyId(task.id);
+        try {
+          if (sb) {
+            const { error } = await sb.from("tasks").delete().eq("id", task.id);
+            if (error) {
+              throw new Error("ลบงานไม่สำเร็จ: " + error.message);
+            }
+            await fetchTasks();
+          } else {
+            setTasks((prev) => prev.filter((t) => t.id !== task.id));
+          }
 
-    setBusyId(task.id);
-    try {
-      if (sb) {
-        const { error } = await sb.from("tasks").delete().eq("id", task.id);
-        if (error) {
-          throw new Error("ลบงานไม่สำเร็จ: " + error.message);
+          setStatusMessage({ text: "ลบรายการงานเรียบร้อยแล้ว", type: "success" });
+          showToast(`ลบงาน "${task.title}" เรียบร้อยแล้ว`, "success", "ลบสำเร็จ");
+          if (onTasksChange) onTasksChange();
+        } catch (err: unknown) {
+          console.error("Delete task error:", err);
+          const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการลบ";
+          setStatusMessage({ text: msg, type: "error" });
+          showToast(msg, "error", "ลบไม่สำเร็จ");
+        } finally {
+          setBusyId(null);
+          setTimeout(() => setStatusMessage(null), 4000);
         }
-        await fetchTasks();
-      } else {
-        setTasks((prev) => prev.filter((t) => t.id !== task.id));
-      }
-
-      setStatusMessage({ text: "ลบรายการงานเรียบร้อยแล้ว", type: "success" });
-      if (onTasksChange) onTasksChange();
-    } catch (err: unknown) {
-      console.error("Delete task error:", err);
-      const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการลบ";
-      setStatusMessage({ text: msg, type: "error" });
-    } finally {
-      setBusyId(null);
-      setTimeout(() => setStatusMessage(null), 4000);
-    }
+      },
+    });
   };
 
   const fmtDate = (val: string | null | undefined) => {

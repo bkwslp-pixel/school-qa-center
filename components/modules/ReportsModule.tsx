@@ -5,6 +5,7 @@ import Image from "next/image";
 import { FileText, Printer, Download, CheckCircle, CheckCircle2 } from "lucide-react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { School, Indicator } from "@/types/database";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface ReportsModuleProps {
   school?: School | null;
@@ -71,6 +72,7 @@ export function ReportsModule({
   school,
   academicYear = "2567",
 }: ReportsModuleProps) {
+  const { showToast } = useNotification();
   const [downloading, setDownloading] = useState(false);
   const [downloadSuccess, setDownloadSuccess] = useState(false);
 
@@ -158,10 +160,11 @@ export function ReportsModule({
       URL.revokeObjectURL(url);
 
       setDownloadSuccess(true);
+      showToast("ส่งออกไฟล์ตารางสรุปผล SAR เรียบร้อยแล้ว (เปิดกับ Excel ได้ทันที)", "success", "ส่งออกสำเร็จ");
       setTimeout(() => setDownloadSuccess(false), 4000);
     } catch (err) {
       console.error("Export CSV error:", err);
-      alert("เกิดข้อผิดพลาดในการส่งออกไฟล์");
+      showToast("เกิดข้อผิดพลาดในการส่งออกไฟล์ กรุณาลองใหม่อีกครั้ง", "error", "ส่งออกไม่สำเร็จ");
     } finally {
       setDownloading(false);
     }

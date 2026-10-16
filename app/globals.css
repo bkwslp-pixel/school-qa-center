@@ -14,6 +14,282 @@
 @media(max-width:390px){.stat-grid{grid-template-columns:1fr}.stat-card{align-items:center}.stat-copy small{font-size:10px}.welcome-copy h1{font-size:21px}.level-pill{flex:1;justify-content:center}.profile-button span{display:none}.donut-wrap{gap:2px}.legend-list>div{font-size:9px}.legend-list b{font-size:9px}}
 
 /* ==========================================================================
+   Premium Notification Toasts & Modal Dialogs
+   ========================================================================== */
+.premium-toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  pointer-events: none;
+  max-width: 420px;
+  width: calc(100% - 40px);
+}
+
+.premium-toast {
+  pointer-events: auto;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 14px 34px rgba(15, 34, 60, 0.12), 0 4px 12px rgba(15, 34, 60, 0.06);
+  border: 1px solid rgba(220, 230, 245, 0.8);
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.premium-toast-icon {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  margin-top: 1px;
+}
+
+.premium-toast-success {
+  border-left: 4px solid #10b981;
+}
+.premium-toast-success .premium-toast-icon {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.premium-toast-error {
+  border-left: 4px solid #ef4444;
+}
+.premium-toast-error .premium-toast-icon {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.premium-toast-warning {
+  border-left: 4px solid #f59e0b;
+}
+.premium-toast-warning .premium-toast-icon {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.premium-toast-info {
+  border-left: 4px solid #2563eb;
+}
+.premium-toast-info .premium-toast-icon {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
+.premium-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.premium-toast-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  color: #0f2e54;
+  margin-bottom: 3px;
+}
+
+.premium-toast-message {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #334155;
+  word-break: break-word;
+}
+
+.premium-toast-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: 0;
+  color: #94a3b8;
+  border-radius: 6px;
+  padding: 4px;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: color 0.15s, background 0.15s;
+}
+.premium-toast-close:hover {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+.premium-toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: currentColor;
+  opacity: 0.25;
+  animation: toastProgress linear forwards;
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Premium Confirm & Alert Modal Dialog */
+.premium-modal-backdrop {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(15, 34, 60, 0.45);
+}
+
+.premium-dialog {
+  width: min(100%, 440px);
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 28px 24px 24px;
+  text-align: center;
+  box-shadow: 0 25px 60px -12px rgba(15, 34, 60, 0.25);
+  animation: dialogPop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  position: relative;
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+@keyframes dialogPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.premium-dialog-badge {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+}
+
+.badge-danger {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 2px solid #fecaca;
+}
+
+.badge-warning {
+  background: #fef3c7;
+  color: #d97706;
+  border: 2px solid #fde68a;
+}
+
+.badge-primary {
+  background: #e0f2fe;
+  color: #0284c7;
+  border: 2px solid #bae6fd;
+}
+
+.premium-dialog-title {
+  margin: 0 0 8px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #0f2e54;
+}
+
+.premium-dialog-message {
+  margin: 0 0 24px;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+.premium-dialog-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.premium-btn-cancel {
+  flex: 1;
+  padding: 11px 18px;
+  border-radius: 10px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.premium-btn-cancel:hover {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+
+.premium-btn-confirm {
+  flex: 1;
+  padding: 11px 18px;
+  border-radius: 10px;
+  border: 0;
+  font-weight: 600;
+  font-size: 13px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+.btn-danger:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.3);
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+}
+.btn-primary:hover {
+  filter: brightness(1.06);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.3);
+}
+
+@media (max-width: 480px) {
+  .premium-toast-container {
+    top: 12px;
+    right: 12px;
+    left: 12px;
+    width: auto;
+  }
+}
+
+/* ==========================================================================
    Print Styles for Government & QA SAR Reports (A4 Page Fit)
    ========================================================================== */
 @media print {
@@ -75,5 +351,372 @@
   .page-break {
     page-break-before: always !important;
     break-before: page !important;
+  }
+}
+
+/* ==========================================================================
+   Premium Toast Notifications & Modern Confirmation Dialogs
+   ========================================================================== */
+.premium-toast-container {
+  position: fixed;
+  top: 1.5rem;
+  right: 1.5rem;
+  z-index: 99999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  pointer-events: none;
+  max-width: 420px;
+  width: calc(100vw - 2rem);
+}
+
+.premium-toast {
+  pointer-events: auto;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem 1.15rem 1.15rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px -5px rgba(16, 43, 80, 0.16), 0 4px 12px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  overflow: hidden;
+  animation: toastSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+[data-theme="dark"] .premium-toast {
+  background: rgba(15, 23, 42, 0.95);
+  border-color: rgba(51, 65, 85, 0.8);
+  box-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.25);
+  color: #f8fafc;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.premium-toast-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  margin-top: 2px;
+}
+
+.premium-toast-success .premium-toast-icon {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+.premium-toast-error .premium-toast-icon {
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+}
+.premium-toast-warning .premium-toast-icon {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+.premium-toast-info .premium-toast-icon {
+  background: rgba(59, 130, 246, 0.14);
+  color: #2563eb;
+}
+
+.premium-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.premium-toast-title {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.2rem;
+  letter-spacing: -0.01em;
+}
+
+[data-theme="dark"] .premium-toast-title {
+  color: #f1f5f9;
+}
+
+.premium-toast-message {
+  font-size: 0.86rem;
+  line-height: 1.4;
+  color: #475569;
+  word-break: break-word;
+}
+
+[data-theme="dark"] .premium-toast-message {
+  color: #94a3b8;
+}
+
+.premium-toast-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 4px;
+  margin-top: -2px;
+  margin-right: -4px;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.premium-toast-close:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #334155;
+}
+
+[data-theme="dark"] .premium-toast-close:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2e8f0;
+}
+
+.premium-toast-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  animation: toastProgress linear forwards;
+  opacity: 0.8;
+}
+
+.premium-toast-success .premium-toast-progress {
+  background: linear-gradient(90deg, #10b981, #059669);
+}
+.premium-toast-error .premium-toast-progress {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+.premium-toast-warning .premium-toast-progress {
+  background: linear-gradient(90deg, #f59e0b, #d97706);
+}
+.premium-toast-info .premium-toast-progress {
+  background: linear-gradient(90deg, #3b82f6, #2563eb);
+}
+
+@keyframes toastProgress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}
+
+/* Premium Dialog / Confirmation Modal */
+.premium-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100000;
+  padding: 1.25rem;
+  animation: backdropFadeIn 0.25s ease-out forwards;
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.premium-dialog {
+  background: #ffffff;
+  border-radius: 20px;
+  max-width: 460px;
+  width: 100%;
+  padding: 2rem;
+  text-align: center;
+  box-shadow: 0 25px 50px -12px rgba(16, 43, 80, 0.35), 0 0 0 1px rgba(226, 232, 240, 0.8);
+  animation: dialogScaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  position: relative;
+}
+
+[data-theme="dark"] .premium-dialog {
+  background: #131c2e;
+  border: 1px solid rgba(51, 65, 85, 0.8);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  color: #f8fafc;
+}
+
+@keyframes dialogScaleUp {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.premium-dialog-badge {
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  margin: 0 auto 1.25rem auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.premium-dialog-badge.badge-danger {
+  background: #fee2e2;
+  color: #dc2626;
+}
+.premium-dialog-badge.badge-warning {
+  background: #fef3c7;
+  color: #d97706;
+}
+.premium-dialog-badge.badge-primary {
+  background: #e0f2fe;
+  color: #0284c7;
+}
+
+.premium-dialog-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.6rem;
+  letter-spacing: -0.015em;
+}
+
+[data-theme="dark"] .premium-dialog-title {
+  color: #f1f5f9;
+}
+
+.premium-dialog-message {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #64748b;
+  margin-bottom: 1.75rem;
+  word-break: break-word;
+}
+
+[data-theme="dark"] .premium-dialog-message {
+  color: #94a3b8;
+}
+
+.premium-dialog-actions {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.premium-btn-cancel {
+  flex: 1;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 12px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.premium-btn-cancel:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #1e293b;
+}
+
+[data-theme="dark"] .premium-btn-cancel {
+  background: #1e293b;
+  color: #cbd5e1;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .premium-btn-cancel:hover:not(:disabled) {
+  background: #334155;
+  color: #ffffff;
+}
+
+.premium-btn-confirm {
+  flex: 1;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.premium-btn-confirm.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+}
+
+.premium-btn-confirm.btn-danger:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 6px 18px rgba(220, 38, 38, 0.35);
+  transform: translateY(-1px);
+}
+
+.premium-btn-confirm.btn-warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+}
+
+.premium-btn-confirm.btn-warning:hover:not(:disabled) {
+  background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);
+  transform: translateY(-1px);
+}
+
+.premium-btn-confirm.btn-primary {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #ffffff;
+}
+
+.premium-btn-confirm.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+  box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+.premium-btn-confirm:disabled,
+.premium-btn-cancel:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+@media (max-width: 640px) {
+  .premium-toast-container {
+    top: 1rem;
+    right: 1rem;
+    left: 1rem;
+    width: auto;
+  }
+  .premium-dialog {
+    padding: 1.5rem 1.25rem;
   }
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BookOpen, CheckCircle, GraduationCap, Search } from "lucide-react";
 import type { Indicator } from "@/types/database";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface StandardsModuleProps {
   indicators: Indicator[];
@@ -10,6 +11,7 @@ interface StandardsModuleProps {
 }
 
 export function StandardsModule({ indicators }: StandardsModuleProps) {
+  const { showAlert } = useNotification();
   const [levelTab, setLevelTab] = useState<"early" | "primary" | "secondary">("primary");
   const [activeStandard, setActiveStandard] = useState("s1");
   const [searchTerm, setSearchTerm] = useState("");
@@ -177,7 +179,13 @@ export function StandardsModule({ indicators }: StandardsModuleProps) {
                 <button
                   className="primary-button"
                   style={{ padding: "6px 12px", fontSize: 11 }}
-                  onClick={() => alert(`ดูข้อมูลเกณฑ์และร่องรอยตัวชี้วัด ${ind.code}`)}
+                  onClick={() =>
+                    showAlert({
+                      title: `เกณฑ์ประเมินตัวชี้วัด ${ind.code}`,
+                      message: `${ind.title_th}\n\nระบบเชื่อมโยงเกณฑ์และร่องรอยหลักฐานการประกันคุณภาพการศึกษาตามมาตรฐาน อปท./สมศ. สำหรับตัวชี้วัดนี้เรียบร้อยแล้ว`,
+                      buttonText: "เข้าใจแล้ว"
+                    })
+                  }
                 >
                   ดูเกณฑ์ประเมิน
                 </button>

@@ -5,6 +5,7 @@ import { Settings, Save, CheckCircle2, AlertCircle, Loader2, Building, Calendar 
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import type { School } from "@/types/database";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface SettingsModuleProps {
   school: School | null;
@@ -22,6 +23,7 @@ export function SettingsModule({
   onYearChange,
   currentYearProp = "2567",
 }: SettingsModuleProps) {
+  const { showToast } = useNotification();
   const sb = client ?? getSupabase();
 
   const [schoolName, setSchoolName] = useState(school?.name ?? "โรงเรียนเทศบาล ๑ บ้านกลาง");
@@ -123,8 +125,10 @@ export function SettingsModule({
         }
 
         setStatusMessage({ text: "บันทึกการตั้งค่าระบบและข้อมูลสถานศึกษาลงฐานข้อมูลเรียบร้อยแล้ว", type: "success" });
+        showToast("บันทึกการตั้งค่าระบบและข้อมูลสถานศึกษาเรียบร้อยแล้ว", "success", "บันทึกข้อมูลสำเร็จ");
       } else {
         setStatusMessage({ text: "บันทึกการตั้งค่าระบบเรียบร้อย (Mock mode)", type: "success" });
+        showToast("บันทึกการตั้งค่าระบบเรียบร้อย (Mock mode)", "success", "บันทึกข้อมูลสำเร็จ");
       }
 
       // Propagate changes to parent
@@ -134,6 +138,7 @@ export function SettingsModule({
       console.error("Save settings error:", err);
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการบันทึก";
       setStatusMessage({ text: msg, type: "error" });
+      showToast(msg, "error", "บันทึกไม่สำเร็จ");
     } finally {
       setSaving(false);
       setTimeout(() => setStatusMessage(null), 5000);

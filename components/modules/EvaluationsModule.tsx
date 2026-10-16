@@ -17,6 +17,7 @@ import {
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import type { School, Indicator } from "@/types/database";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface EvaluationsModuleProps {
   school?: School | null;
@@ -219,6 +220,7 @@ export function EvaluationsModule({
   academicYear = "2567",
   onNavigateToEvidence,
 }: EvaluationsModuleProps) {
+  const { showToast, showConfirm } = useNotification();
   const sb = client ?? getSupabase();
 
   const [selectedStandard, setSelectedStandard] = useState(1);
@@ -384,8 +386,8 @@ export function EvaluationsModule({
     });
   };
 
-  // Save / Submit Evaluations
-  const handleSaveEvaluations = async (targetStatus: "draft" | "submitted" = "draft") => {
+  // Core Save / Submit Execution
+  const executeSaveEvaluations = async (targetStatus: "draft" | "submitted") => {
     setSaving(true);
     setStatusMessage(null);
 
@@ -432,26 +434,50 @@ export function EvaluationsModule({
           return { ...prev, [selectedStandard]: updated };
         });
 
-        setStatusMessage({
-          text:
-            targetStatus === "submitted"
-              ? "ส่งผลการประเมินตนเอง (SAR) เข้าสู่ระบบเรียบร้อยแล้ว พร้อมให้ผู้บริหารและคณะกรรมการตรวจสอบ"
-              : "บันทึกแบบร่างผลการประเมินลงฐานข้อมูลเรียบร้อยแล้ว",
-          type: "success",
-        });
+        const successText =
+          targetStatus === "submitted"
+            ? "ส่งผลการประเมินตนเอง (SAR) เข้าสู่ระบบเรียบร้อยแล้ว พร้อมให้ผู้บริหารและคณะกรรมการตรวจสอบ"
+            : "บันทึกแบบร่างผลการประเมินลงฐานข้อมูลเรียบร้อยแล้ว";
+
+        setStatusMessage({ text: successText, type: "success" });
+        showToast(
+          targetStatus === "submitted"
+            ? `ส่งผลการประเมินมาตรฐานที่ ${selectedStandard} สำเร็จ`
+            : `บันทึกแบบร่างมาตรฐานที่ ${selectedStandard} สำเร็จ`,
+          "success",
+          "บันทึกข้อมูลเรียบร้อย"
+        );
       } else {
         setStatusMessage({
           text: "บันทึกผลการประเมินเรียบร้อย (Mock mode)",
           type: "success",
         });
+        showToast("บันทึกผลการประเมินเรียบร้อย (Mock mode)", "success", "บันทึกข้อมูลเรียบร้อย");
       }
     } catch (err: unknown) {
       console.error("Save evaluations error:", err);
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการบันทึก";
       setStatusMessage({ text: msg, type: "error" });
+      showToast(msg, "error", "บันทึกไม่สำเร็จ");
     } finally {
       setSaving(false);
       setTimeout(() => setStatusMessage(null), 5000);
+    }
+  };
+
+  // Trigger Save with optional confirm dialog for submit
+  const handleSaveEvaluations = (targetStatus: "draft" | "submitted" = "draft") => {
+    if (targetStatus === "submitted") {
+      showConfirm({
+        title: "ยืนยันการส่งผลการประเมินตนเอง (SAR)",
+        message: `คุณต้องการส่งผลการประเมินตนเองมาตรฐานที่ ${selectedStandard} เข้าสู่ระบบหลัก เพื่อเสนอต่อคณะกรรมการและฝ่ายบริหารใช่หรือไม่?`,
+        confirmText: "ยืนยันส่งผลประเมิน",
+        cancelText: "ตรวจสอบอีกครั้ง",
+        type: "primary",
+        onConfirm: () => executeSaveEvaluations("submitted"),
+      });
+    } else {
+      void executeSaveEvaluations("draft");
     }
   };
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Download, Check, X, Share } from "lucide-react";
 import Image from "next/image";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -10,6 +11,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export function PwaInstallButton() {
+  const { showAlert, showToast } = useNotification();
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showIosGuide, setShowIosGuide] = useState(false);
@@ -55,6 +57,7 @@ export function PwaInstallButton() {
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setDeferredPrompt(null);
+      showToast("ติดตั้งแอปพลิเคชัน QA Bkms1 สำเร็จแล้ว!", "success", "ติดตั้งเรียบร้อย");
     };
 
     window.addEventListener("appinstalled", handleAppInstalled);
@@ -63,7 +66,7 @@ export function PwaInstallButton() {
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("appinstalled", handleAppInstalled);
     };
-  }, []);
+  }, [showToast]);
 
   const handleInstallClick = async () => {
     if (deferredPrompt) {
@@ -76,10 +79,11 @@ export function PwaInstallButton() {
     } else if (isIos) {
       setShowIosGuide(true);
     } else {
-      // General instructions for desktop/browsers
-      alert(
-        "ท่านสามารถติดตั้งแอปได้โดยคลิกที่ไอคอน 'ติดตั้ง' (Install App) ที่แถบ Address bar ด้านบนของเว็บเบราว์เซอร์"
-      );
+      showAlert({
+        title: "วิธีติดตั้งแอปพลิเคชัน QA Bkms1",
+        message: "คุณสามารถติดตั้งแอปได้โดยคลิกที่ไอคอน 'ติดตั้ง' (Install App) หรือเครื่องหมายบวก (+) ที่แถบ Address bar ด้านบนของเว็บเบราว์เซอร์ เพื่อเปิดใช้งานเสมือนแอปจริงบนอุปกรณ์ของคุณ",
+        buttonText: "เข้าใจแล้ว"
+      });
     }
   };
 

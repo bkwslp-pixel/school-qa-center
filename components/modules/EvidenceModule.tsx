@@ -19,6 +19,7 @@ import {
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import type { EvidenceRecord, School, Indicator } from "@/types/database";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface EvidenceModuleProps {
   school?: School | null;
@@ -114,6 +115,7 @@ export function EvidenceModule({
   academicYear = "2567",
   onEvidenceCountChange,
 }: EvidenceModuleProps) {
+  const { showToast, showConfirm, showAlert } = useNotification();
   const sb = client ?? getSupabase();
 
   const [evidenceList, setEvidenceList] = useState<EvidenceRecord[]>(sampleEvidence);
@@ -357,6 +359,7 @@ interface EvidenceDbRow {
         }
 
         setStatusMessage({ text: "อัปโหลดและบันทึกหลักฐานเข้าระบบเรียบร้อยแล้ว", type: "success" });
+        showToast("อัปโหลดและเชื่อมโยงหลักฐานเข้าระบบสำเร็จ", "success", "บันทึกเรียบร้อย");
         await fetchEvidence();
       } else {
         // Fallback for local demo preview
@@ -376,6 +379,7 @@ interface EvidenceDbRow {
         };
         setEvidenceList((prev) => [fallbackItem, ...prev]);
         setStatusMessage({ text: "บันทึกตัวอย่างหลักฐานเรียบร้อย (Mock mode)", type: "success" });
+        showToast("บันทึกตัวอย่างหลักฐานเรียบร้อย (Mock mode)", "success", "บันทึกเรียบร้อย");
       }
 
       // Reset form
@@ -389,42 +393,52 @@ interface EvidenceDbRow {
       console.error("Upload error:", err);
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการอัปโหลด";
       setStatusMessage({ text: msg, type: "error" });
+      showToast(msg, "error", "อัปโหลดไม่สำเร็จ");
     } finally {
       setUploading(false);
       setTimeout(() => setStatusMessage(null), 6000);
     }
   };
 
-  // Handle Delete
-  const handleDeleteEvidence = async (item: EvidenceRecord) => {
-    if (!confirm(`คุณต้องการลบเอกสาร "${item.title}" ใช่หรือไม่?`)) return;
+  // Handle Delete with Premium Confirm Dialog
+  const handleDeleteEvidence = (item: EvidenceRecord) => {
+    showConfirm({
+      title: "ยืนยันการลบเอกสารหลักฐาน",
+      message: `คุณต้องการลบเอกสาร "${item.title}" ออกจากระบบฐานข้อมูลใช่หรือไม่? เมื่อลบแล้วจะไม่สามารถกู้คืนได้`,
+      confirmText: "ลบเอกสาร",
+      cancelText: "ยกเลิก",
+      type: "danger",
+      onConfirm: async () => {
+        setDeletingId(item.id);
+        try {
+          if (sb) {
+            // 1. Remove from storage if exists
+            if (item.file_path && !item.file_path.startsWith("demo/")) {
+              await sb.storage.from("qa-evidence").remove([item.file_path]);
+            }
 
-    setDeletingId(item.id);
-    try {
-      if (sb) {
-        // 1. Remove from storage if exists
-        if (item.file_path && !item.file_path.startsWith("demo/")) {
-          await sb.storage.from("qa-evidence").remove([item.file_path]);
+            // 2. Remove record
+            const { error: delErr } = await sb.from("evidence_records").delete().eq("id", item.id);
+            if (delErr) {
+              throw new Error("ลบรายการไม่สำเร็จ: " + delErr.message);
+            }
+            await fetchEvidence();
+          } else {
+            setEvidenceList((prev) => prev.filter((e) => e.id !== item.id));
+          }
+          showToast(`ลบเอกสาร "${item.title}" เรียบร้อยแล้ว`, "success", "ลบสำเร็จ");
+          setStatusMessage({ text: "ลบเอกสารหลักฐานเรียบร้อยแล้ว", type: "success" });
+        } catch (err: unknown) {
+          console.error("Delete error:", err);
+          const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการลบ";
+          showToast(msg, "error", "ลบไม่สำเร็จ");
+          setStatusMessage({ text: msg, type: "error" });
+        } finally {
+          setDeletingId(null);
+          setTimeout(() => setStatusMessage(null), 4000);
         }
-
-        // 2. Remove record
-        const { error: delErr } = await sb.from("evidence_records").delete().eq("id", item.id);
-        if (delErr) {
-          throw new Error("ลบรายการไม่สำเร็จ: " + delErr.message);
-        }
-        await fetchEvidence();
-      } else {
-        setEvidenceList((prev) => prev.filter((e) => e.id !== item.id));
-      }
-      setStatusMessage({ text: "ลบเอกสารหลักฐานเรียบร้อยแล้ว", type: "success" });
-    } catch (err: unknown) {
-      console.error("Delete error:", err);
-      const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการลบ";
-      setStatusMessage({ text: msg, type: "error" });
-    } finally {
-      setDeletingId(null);
-      setTimeout(() => setStatusMessage(null), 4000);
-    }
+      },
+    });
   };
 
   // Get file URL for viewing/download
@@ -436,7 +450,11 @@ interface EvidenceDbRow {
 
     if (item.file_path) {
       if (!sb || item.file_path.startsWith("demo/")) {
-        alert(`กำลังจำลองการเปิดไฟล์: ${item.title}\n(ที่อยู่ไฟล์: ${item.file_path})`);
+        showAlert({
+          title: "ระบบจำลองการเปิดเอกสารหลักฐาน",
+          message: `กำลังจำลองการเปิดไฟล์: ${item.title}\nที่อยู่ไฟล์: ${item.file_path}\n(สามารถคลิกเปิดเอกสารจริงได้ทันทีหลังจากจัดเก็บไฟล์ขึ้น Cloud Storage)`,
+          buttonText: "เข้าใจแล้ว"
+        });
         return;
       }
 
