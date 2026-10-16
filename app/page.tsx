@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
+import { Shield } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
-import type { School, Task, Indicator, LoadState } from "@/types/database";
+import type { School, Task, Indicator, LoadState, UserRoleType } from "@/types/database";
 
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
@@ -115,8 +116,15 @@ export default function DashboardPage() {
   const [selectedLevel, setSelectedLevel] = useState("ทุกระดับ");
 
   const [user, setUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<UserRoleType | null>(null);
   const [client, setClient] = useState<SupabaseClient | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("loading");
+
+  const isAdminOrLeadership = Boolean(
+    userRole === "admin" ||
+    userRole === "school_leadership" ||
+    user?.email === "bkwslp@gmail.com"
+  );
 
   // Auth form states
   const [showLogin, setShowLogin] = useState(false);
@@ -230,8 +238,38 @@ export default function DashboardPage() {
       return;
     }
 
+    const fetchUserRole = async (currentUser: User, sbClient: SupabaseClient) => {
+      try {
+        const { data: roleRow } = await sbClient
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", currentUser.id)
+          .maybeSingle();
+
+        if (roleRow?.role) {
+          setUserRole(roleRow.role as UserRoleType);
+        } else if (currentUser.email === "bkwslp@gmail.com") {
+          setUserRole("admin");
+        } else {
+          setUserRole("teacher");
+        }
+      } catch (err) {
+        console.warn("fetchUserRole err:", err);
+        if (currentUser.email === "bkwslp@gmail.com") {
+          setUserRole("admin");
+        } else {
+          setUserRole("teacher");
+        }
+      }
+    };
+
     sb.auth.getUser().then(({ data }) => {
       setUser(data.user);
+      if (data.user) {
+        void fetchUserRole(data.user, sb);
+      } else {
+        setUserRole(null);
+      }
       void loadData(sb);
     });
 
@@ -240,8 +278,10 @@ export default function DashboardPage() {
     } = sb.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
+        void fetchUserRole(session.user, sb);
         window.setTimeout(() => void loadData(sb), 0);
       } else {
+        setUserRole(null);
         setLoadState("live");
       }
     });
@@ -289,6 +329,7 @@ export default function DashboardPage() {
     if (!client) return;
     await client.auth.signOut();
     setUser(null);
+    setUserRole(null);
   }
 
   async function handleSetInvitedUserPassword(e: React.FormEvent<HTMLFormElement>) {
@@ -327,6 +368,7 @@ export default function DashboardPage() {
         school={school}
         schoolYear={schoolYear}
         setSchoolYear={setSchoolYear}
+        isAdminOrLeadership={isAdminOrLeadership}
       />
 
       {/* Main Area */}
@@ -338,6 +380,7 @@ export default function DashboardPage() {
           query={query}
           setQuery={setQuery}
           user={user}
+          userRole={userRole}
           loadState={loadState}
           onSignOut={handleSignOut}
           onOpenLogin={() => setShowLogin(true)}
@@ -430,23 +473,71 @@ export default function DashboardPage() {
           )}
 
           {activeMenu === "จัดการผู้ใช้" && (
-            <UsersModule
-              client={client}
-              school={school}
-            />
+            isAdminOrLeadership ? (
+              <UsersModule
+                client={client}
+                school={school}
+                currentUser={user}
+                currentUserRole={userRole}
+              />
+            ) : (
+              <div className="panel" style={{ padding: "48px 24px", textAlign: "center", maxWidth: 640, margin: "40px auto", borderRadius: 16 }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#fef3c7", color: "#d97706", display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
+                  <Shield size={32} />
+                </div>
+                <h2 style={{ fontSize: 20, color: "#1e3a5f", margin: "0 0 8px" }}>
+                  สงวนสิทธิ์เฉพาะผู้ดูแลระบบและฝ่ายบริหาร
+                </h2>
+                <p style={{ color: "#64748b", fontSize: 13, lineHeight: 1.8, margin: "0 0 24px" }}>
+                  เมนูนี้สำหรับการบริหารจัดการสิทธิ์บัญชีผู้ใช้งานตามนโยบายความปลอดภัย (RBAC)<br />
+                  สำหรับคุณครูผู้รับผิดชอบตัวชี้วัด ท่านสามารถอัปโหลดเอกสารหลักฐาน บันทึกคะแนนประเมินตนเอง และติดตามภารกิจได้ที่เมนู <strong>&ldquo;คลังหลักฐาน&rdquo;</strong> และ <strong>&ldquo;ผลการประเมิน&rdquo;</strong> ได้ตามปกติ
+                </p>
+                <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
+                  <button className="primary-button" onClick={() => setActiveMenu("หน้าหลัก")}>
+                    กลับสู่หน้าหลัก
+                  </button>
+                  {!user && (
+                    <button
+                      className="primary-button"
+                      style={{ background: "#f1f5f9", color: "#334155" }}
+                      onClick={() => setShowLogin(true)}
+                    >
+                      เข้าสู่ระบบด้วยบัญชีผู้ดูแลระบบ
+                    </button>
+                  )}
+                </div>
+              </div>
+            )
           )}
 
           {activeMenu === "ตั้งค่าระบบ" && (
-            <SettingsModule
-              school={school}
-              client={client}
-              user={user}
-              currentYearProp={schoolYear}
-              onYearChange={(y) => setSchoolYear(y)}
-              onUpdateSchool={(updated) =>
-                setSchool((prev) => (prev ? { ...prev, ...updated } : (updated as School)))
-              }
-            />
+            isAdminOrLeadership ? (
+              <SettingsModule
+                school={school}
+                client={client}
+                user={user}
+                currentYearProp={schoolYear}
+                onYearChange={(y) => setSchoolYear(y)}
+                onUpdateSchool={(updated) =>
+                  setSchool((prev) => (prev ? { ...prev, ...updated } : (updated as School)))
+                }
+              />
+            ) : (
+              <div className="panel" style={{ padding: "48px 24px", textAlign: "center", maxWidth: 640, margin: "40px auto", borderRadius: 16 }}>
+                <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#fef3c7", color: "#d97706", display: "grid", placeItems: "center", margin: "0 auto 16px" }}>
+                  <Shield size={32} />
+                </div>
+                <h2 style={{ fontSize: 20, color: "#1e3a5f", margin: "0 0 8px" }}>
+                  สงวนสิทธิ์เฉพาะผู้ดูแลระบบและฝ่ายบริหาร
+                </h2>
+                <p style={{ color: "#64748b", fontSize: 13, lineHeight: 1.8, margin: "0 0 24px" }}>
+                  เมนูการตั้งค่าข้อมูลพื้นฐานของโรงเรียนสงวนสิทธิ์เฉพาะฝ่ายบริหารและผู้ดูแลระบบเท่านั้น
+                </p>
+                <button className="primary-button" onClick={() => setActiveMenu("หน้าหลัก")}>
+                  กลับสู่หน้าหลัก
+                </button>
+              </div>
+            )
           )}
 
           {/* Footer */}

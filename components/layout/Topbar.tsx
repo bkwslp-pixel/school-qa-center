@@ -2,7 +2,7 @@
 
 import { Menu, Search, Bell, Users, LogOut, ChevronDown } from "lucide-react";
 import type { User } from "@supabase/supabase-js";
-import type { LoadState } from "@/types/database";
+import type { LoadState, UserRoleType } from "@/types/database";
 import { PwaInstallButton } from "@/components/pwa/PwaInstallButton";
 
 interface TopbarProps {
@@ -11,6 +11,7 @@ interface TopbarProps {
   query: string;
   setQuery: (q: string) => void;
   user: User | null;
+  userRole?: UserRoleType | null;
   loadState: LoadState;
   onSignOut: () => void;
   onOpenLogin: () => void;
@@ -23,6 +24,7 @@ export function Topbar({
   query,
   setQuery,
   user,
+  userRole,
   loadState,
   onSignOut,
   onOpenLogin,
@@ -73,7 +75,15 @@ export function Topbar({
             </div>
             <span>
               <strong>{user.email}</strong>
-              <small>บุคลากร / ออกจากระบบ</small>
+              <small>
+                {userRole === "admin"
+                  ? "ผู้ดูแลระบบ (Admin)"
+                  : userRole === "school_leadership"
+                  ? "ผู้บริหารสถานศึกษา"
+                  : userRole === "external_evaluator"
+                  ? "ผู้ตรวจประเมินภายนอก"
+                  : "ครูผู้รับผิดชอบตัวชี้วัด"} / ออกจากระบบ
+              </small>
             </span>
             <LogOut size={16} />
           </button>

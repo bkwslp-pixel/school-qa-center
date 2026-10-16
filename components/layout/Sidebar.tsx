@@ -16,6 +16,7 @@ interface SidebarProps {
   school: School | null;
   schoolYear: string;
   setSchoolYear: (year: string) => void;
+  isAdminOrLeadership?: boolean;
 }
 
 export const menuItems = [
@@ -25,8 +26,8 @@ export const menuItems = [
   { label: "ผลการประเมิน", icon: ChartNoAxesCombined },
   { label: "งานติดตาม", icon: Activity },
   { label: "รายงาน", icon: FileText },
-  { label: "จัดการผู้ใช้", icon: Users },
-  { label: "ตั้งค่าระบบ", icon: Settings },
+  { label: "จัดการผู้ใช้", icon: Users, adminOnly: true },
+  { label: "ตั้งค่าระบบ", icon: Settings, adminOnly: true },
 ];
 
 export function Sidebar({
@@ -37,7 +38,12 @@ export function Sidebar({
   school,
   schoolYear,
   setSchoolYear,
+  isAdminOrLeadership = false,
 }: SidebarProps) {
+  const visibleMenuItems = menuItems.filter(
+    (item) => !item.adminOnly || isAdminOrLeadership
+  );
+
   return (
     <>
       {mobileNav && (
@@ -73,7 +79,7 @@ export function Sidebar({
         </div>
 
         <nav className="side-nav">
-          {menuItems.map((item) => {
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeMenu === item.label;
             return (

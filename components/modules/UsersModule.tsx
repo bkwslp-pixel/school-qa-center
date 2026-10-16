@@ -9,6 +9,7 @@ import type { Profile, UserRoleType, School } from "@/types/database";
 interface UsersModuleProps {
   client?: SupabaseClient | null;
   currentUser?: User | null;
+  currentUserRole?: UserRoleType | null;
   school?: School | null;
 }
 
@@ -24,6 +25,7 @@ interface ProfileDbRow {
 
 export function UsersModule({
   client,
+  currentUserRole,
   school,
 }: UsersModuleProps) {
   const sb = client ?? getSupabase();
@@ -31,6 +33,7 @@ export function UsersModule({
   const [userList, setUserList] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("all");
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteName, setInviteName] = useState("");
@@ -86,12 +89,17 @@ export function UsersModule({
     void fetchUsers();
   }, [fetchUsers]);
 
-  const filtered = userList.filter(
-    (u) =>
+  const filtered = userList.filter((u) => {
+    const matchesSearch =
       u.full_name.toLowerCase().includes(search.toLowerCase()) ||
       (u.department ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (u.position ?? "").toLowerCase().includes(search.toLowerCase())
-  );
+      (u.position ?? "").toLowerCase().includes(search.toLowerCase());
+
+    const matchesRole =
+      selectedRoleFilter === "all" || u.role === selectedRoleFilter;
+
+    return matchesSearch && matchesRole;
+  });
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -197,9 +205,14 @@ export function UsersModule({
       <div className="panel" style={{ background: "linear-gradient(135deg, #16365c, #0e223b)", color: "#fff" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#8abff7", fontSize: 13, marginBottom: 4 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#8abff7", fontSize: 13, marginBottom: 4, flexWrap: "wrap" }}>
               <Users size={18} />
               <span>การบริหารจัดการผู้ใช้งานและสิทธิ์เข้าถึง (RBAC)</span>
+              {currentUserRole && (
+                <span style={{ fontSize: 11, background: "rgba(255,255,255,0.15)", padding: "2px 8px", borderRadius: 10, color: "#fff" }}>
+                  สิทธิ์ปัจจุบัน: {getRoleLabel(currentUserRole)}
+                </span>
+              )}
             </div>
             <h1 style={{ margin: 0, fontSize: 22, color: "#fff" }}>บุคลากรและคณะกรรมการประเมิน</h1>
             <p style={{ margin: "6px 0 0", color: "#bad6f7", fontSize: 13 }}>
@@ -232,6 +245,63 @@ export function UsersModule({
 
       {/* Control & Table */}
       <div className="panel">
+        {/* Role Tabs */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 14, overflowX: "auto", paddingBottom: 4 }}>
+          {[
+            { id: "all", label: "ทั้งหมด" },
+            { id: "teacher", label: "ครูผู้รับผิดชอบตัวชี้วัด" },
+            { id: "school_leadership", label: "ผู้บริหารสถานศึกษา" },
+            { id: "admin", label: "ผู้ดูแลระบบ (Admin)" },
+            { id: "external_evaluator", label: "ผู้ตรวจประเมินภายนอก" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSelectedRoleFilter(tab.id)}
+              style={{
+                border: "1px solid",
+                borderColor: selectedRoleFilter === tab.id ? "#2563eb" : "#e2e8f0",
+                background: selectedRoleFilter === tab.id ? "#eff6ff" : "#fff",
+                color: selectedRoleFilter === tab.id ? "#1d4ed8" : "#475569",
+                borderRadius: 8,
+                padding: "6px 14px",
+                fontSize: 12,
+                fontWeight: selectedRoleFilter === tab.id ? 600 : 400,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                transition: "all 0.15s ease",
+              }}
+            >
+              {tab.label}
+              {tab.id !== "all" && (
+                <span style={{ marginLeft: 6, opacity: 0.75, fontSize: 11 }}>
+                  ({userList.filter((u) => u.role === tab.id).length})
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {/* Role Policy Explanation Banner */}
+        <div
+          style={{
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            borderRadius: 8,
+            padding: "10px 14px",
+            marginBottom: 16,
+            fontSize: 12,
+            color: "#166534",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+          }}
+        >
+          <Shield size={18} color="#16a34a" style={{ flexShrink: 0 }} />
+          <div>
+            <strong>แนวทางการกำหนดสิทธิ์:</strong> ครูผู้รับผิดชอบตัวชี้วัดมีสิทธิ์เต็มในการอัปโหลดหลักฐานและกรอกผลประเมินตนเองตามตัวชี้วัดที่ได้รับมอบหมาย โดยเมนูจัดการผู้ใช้นี้จะสงวนสิทธิ์เฉพาะผู้ดูแลระบบและฝ่ายบริหารเท่านั้น
+          </div>
+        </div>
+
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f3f7fc", padding: "6px 12px", borderRadius: 8, border: "1px solid #e7eef8", width: 320 }}>
             <Search size={16} color="#7890b2" />
