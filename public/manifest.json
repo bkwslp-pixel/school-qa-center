@@ -1,0 +1,25 @@
+{
+  "name": "School QA Bkms1 - โรงเรียนเทศบาล ๑ บ้านกลาง",
+  "short_name": "QA Bkms1",
+  "description": "ระบบบริหารจัดการข้อมูลประกันคุณภาพสถานศึกษา โรงเรียนเทศบาล ๑ บ้านกลาง สังกัดเทศบาลตำบลบ้านกลาง จ.ลำพูน",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#102b50",
+  "theme_color": "#102b50",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["education", "productivity"]
+}
