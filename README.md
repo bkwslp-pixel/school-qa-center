@@ -1,8 +1,11 @@
 # School QA Center v1.0 — Next.js + Supabase
 
+🌐 **เข้าใช้งานระบบออนไลน์ (Live Website):** [https://school-qa-center.vercel.app](https://school-qa-center.vercel.app)
+
 [![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fbkwslp-pixel%2Fschool-qa-center&env=NEXT_PUBLIC_SUPABASE_URL,NEXT_PUBLIC_SUPABASE_ANON_KEY&envDescription=Enter%20your%20Supabase%20Project%20URL%20and%20Anon%2FPublishable%20Key)
 
 Starter web application based on the supplied dashboard screenshot. It includes a responsive Thai dashboard, sample chart data, a Supabase browser client, and email/password sign-in.
+
 
 
 ## Requirements
