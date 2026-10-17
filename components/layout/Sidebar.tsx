@@ -16,6 +16,7 @@ interface SidebarProps {
   school: School | null;
   schoolYear: string;
   setSchoolYear: (year: string) => void;
+  availableYears?: string[];
   isAdminOrLeadership?: boolean;
 }
 
@@ -38,6 +39,7 @@ export function Sidebar({
   school,
   schoolYear,
   setSchoolYear,
+  availableYears,
   isAdminOrLeadership = false,
 }: SidebarProps) {
   const visibleMenuItems = menuItems.filter(
@@ -113,9 +115,14 @@ export function Sidebar({
               value={schoolYear}
               onChange={(e) => setSchoolYear(e.target.value)}
             >
-              <option value="2567">2567</option>
-              <option value="2568">2568</option>
-              <option value="2569">2569</option>
+              {(availableYears && availableYears.length > 0
+                ? availableYears
+                : ["2569", "2568", "2567", "2566"]
+              ).map((yr) => (
+                <option key={yr} value={yr}>
+                  {yr}
+                </option>
+              ))}
             </select>
           </label>
 

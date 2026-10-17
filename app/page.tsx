@@ -5,6 +5,7 @@ import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { Shield } from "lucide-react";
 import { getSupabase } from "@/lib/supabase";
 import type { School, Task, Indicator, LoadState, UserRoleType } from "@/types/database";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
@@ -108,10 +109,12 @@ const standardEducationIndicators: Indicator[] = [
 const educationLevels = ["ทุกระดับ", "ปฐมวัย", "ประถมศึกษา", "มัธยมศึกษา"];
 
 export default function DashboardPage() {
+  const { showToast } = useNotification();
   const [activeMenu, setActiveMenu] = useState("หน้าหลัก");
   const [mobileNav, setMobileNav] = useState(false);
   const [query, setQuery] = useState("");
   const [schoolYear, setSchoolYear] = useState("2567");
+  const [availableYears, setAvailableYears] = useState<string[]>(["2569", "2568", "2567", "2566"]);
   const [assessmentScope, setAssessmentScope] = useState("ทั้งภายในและภายนอก");
   const [selectedLevel, setSelectedLevel] = useState("ทุกระดับ");
 
@@ -162,6 +165,8 @@ export default function DashboardPage() {
         tasksCountRes,
         indicatorsRes,
         indicatorsCountRes,
+        yearsRes,
+        evidenceYearsRes,
       ] = await Promise.all([
         sb.from("schools").select("id,name,province,district,affiliation").limit(1).maybeSingle(),
         sb.from("evidence_records").select("id", { count: "exact", head: true }),
@@ -169,6 +174,8 @@ export default function DashboardPage() {
         sb.from("tasks").select("id", { count: "exact", head: true }),
         sb.from("indicators").select("id,code,title_th,standard_id,weight,target_score").order("sort_order").limit(15),
         sb.from("indicators").select("id", { count: "exact", head: true }),
+        sb.from("academic_years").select("year, is_active").order("year", { ascending: false }),
+        sb.from("evidence_records").select("academic_year").not("academic_year", "is", null),
       ]);
 
       const firstError =
@@ -204,12 +211,62 @@ export default function DashboardPage() {
         setIndicatorCount(indicatorsCountRes.count);
       }
 
+      // Hybrid dynamic academic years: merge DB years and evidence records
+      const allFoundYears = new Set<string>(["2569", "2568", "2567", "2566"]);
+      if (yearsRes?.data) {
+        yearsRes.data.forEach((r: { year: string; is_active?: boolean }) => {
+          if (r.year) allFoundYears.add(r.year);
+          if (r.is_active) {
+            setSchoolYear((prev) => (prev === "2567" ? r.year : prev));
+          }
+        });
+      }
+      if (evidenceYearsRes?.data) {
+        evidenceYearsRes.data.forEach((r: { academic_year: string }) => {
+          if (r.academic_year) allFoundYears.add(r.academic_year);
+        });
+      }
+      const sortedYears = Array.from(allFoundYears).sort((a, b) => b.localeCompare(a));
+      setAvailableYears(sortedYears);
+
       setLoadState("live");
     } catch (err) {
       console.error("Load data error:", err);
       setLoadState("live");
     }
   }, []);
+
+  const handleAddAcademicYear = useCallback(
+    async (newYear: string) => {
+      const clean = newYear.trim();
+      if (!clean) return;
+
+      setAvailableYears((prev) => {
+        const next = Array.from(new Set([clean, ...prev])).sort((a, b) => b.localeCompare(a));
+        return next;
+      });
+      setSchoolYear(clean);
+
+      if (client) {
+        try {
+          const targetSchoolId = school?.id ?? "sch-1";
+          await client.from("academic_years").upsert(
+            {
+              school_id: targetSchoolId,
+              year: clean,
+              is_active: true,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "school_id,year" }
+          );
+        } catch (err) {
+          console.warn("Save academic year error:", err);
+        }
+      }
+      showToast(`เพิ่มปีการศึกษา ${clean} เข้าสู่ระบบเรียบร้อยแล้ว`, "success", "บันทึกข้อมูลสำเร็จ");
+    },
+    [client, school?.id, showToast]
+  );
 
   useEffect(() => {
     // Check invite or reset tokens in URL hash
@@ -368,6 +425,7 @@ export default function DashboardPage() {
         school={school}
         schoolYear={schoolYear}
         setSchoolYear={setSchoolYear}
+        availableYears={availableYears}
         isAdminOrLeadership={isAdminOrLeadership}
       />
 
@@ -397,6 +455,9 @@ export default function DashboardPage() {
                 setSelectedLevel={setSelectedLevel}
                 schoolYear={schoolYear}
                 setSchoolYear={setSchoolYear}
+                availableYears={availableYears}
+                onAddAcademicYear={handleAddAcademicYear}
+                isAdminOrLeadership={isAdminOrLeadership}
                 assessmentScope={assessmentScope}
                 setAssessmentScope={setAssessmentScope}
                 onRefresh={() => client && void loadData(client)}
@@ -517,6 +578,8 @@ export default function DashboardPage() {
                 client={client}
                 user={user}
                 currentYearProp={schoolYear}
+                availableYears={availableYears}
+                onAddAcademicYear={handleAddAcademicYear}
                 onYearChange={(y) => setSchoolYear(y)}
                 onUpdateSchool={(updated) =>
                   setSchool((prev) => (prev ? { ...prev, ...updated } : (updated as School)))

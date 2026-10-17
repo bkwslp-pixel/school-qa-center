@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Settings, Save, CheckCircle2, AlertCircle, Loader2, Building, Calendar } from "lucide-react";
+import { Settings, Save, CheckCircle2, AlertCircle, Loader2, Building, Calendar, Plus } from "lucide-react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import type { School } from "@/types/database";
@@ -14,6 +14,8 @@ interface SettingsModuleProps {
   onUpdateSchool?: (data: Partial<School>) => void;
   onYearChange?: (year: string) => void;
   currentYearProp?: string;
+  availableYears?: string[];
+  onAddAcademicYear?: (year: string) => Promise<void>;
 }
 
 export function SettingsModule({
@@ -22,6 +24,8 @@ export function SettingsModule({
   onUpdateSchool,
   onYearChange,
   currentYearProp = "2567",
+  availableYears,
+  onAddAcademicYear,
 }: SettingsModuleProps) {
   const { showToast } = useNotification();
   const sb = client ?? getSupabase();
@@ -38,6 +42,32 @@ export function SettingsModule({
   const [website, setWebsite] = useState(school?.website ?? "");
   const [currentYear, setCurrentYear] = useState(currentYearProp);
   const [storageType, setStorageType] = useState("supabase");
+
+  const [inlineNewYear, setInlineNewYear] = useState("");
+  const [inlineAdding, setInlineAdding] = useState(false);
+
+  const displayYears =
+    availableYears && availableYears.length > 0
+      ? availableYears
+      : ["2569", "2568", "2567", "2566"];
+
+  const handleInlineAddYear = async () => {
+    const clean = inlineNewYear.trim();
+    if (!clean || !/^\d{4}$/.test(clean)) {
+      showToast("กรุณาระบุปีการศึกษาเป็นตัวเลข 4 หลัก เช่น 2568 หรือ 2570", "warning");
+      return;
+    }
+    setInlineAdding(true);
+    try {
+      if (onAddAcademicYear) {
+        await onAddAcademicYear(clean);
+      }
+      setCurrentYear(clean);
+      setInlineNewYear("");
+    } finally {
+      setInlineAdding(false);
+    }
+  };
 
   const [saving, setSaving] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -296,10 +326,11 @@ export function SettingsModule({
                 disabled={saving}
                 style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid #d5e2f3", fontSize: 13 }}
               >
-                <option value="2567">2567 (ปีการศึกษาปัจจุบัน)</option>
-                <option value="2568">2568</option>
-                <option value="2569">2569</option>
-                <option value="2566">2566 (ปีการศึกษาย้อนหลัง)</option>
+                {displayYears.map((yr) => (
+                  <option key={yr} value={yr}>
+                    {yr} {yr === currentYear ? "(ปีการศึกษาปัจจุบัน)" : ""}
+                  </option>
+                ))}
               </select>
             </label>
 
@@ -315,6 +346,68 @@ export function SettingsModule({
                 <option value="gdrive">Google Drive API Integration</option>
               </select>
             </label>
+          </div>
+
+          <div
+            style={{
+              marginTop: 16,
+              padding: 12,
+              background: "#f8fafc",
+              borderRadius: 8,
+              border: "1px dashed #cbd5e1",
+              display: "flex",
+              flexWrap: "wrap",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+            }}
+          >
+            <div>
+              <strong style={{ fontSize: 13, color: "#1e293b", display: "block" }}>
+                ต้องการเพิ่มปีการศึกษาใหม่เข้าสู่ระบบ?
+              </strong>
+              <span style={{ fontSize: 11, color: "#64748b" }}>
+                ระบุปีการศึกษา (พ.ศ.) เพื่อเปิดรอบการประเมินและคลังหลักฐานใหม่
+              </span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="text"
+                placeholder="เช่น 2568 หรือ 2570"
+                value={inlineNewYear}
+                onChange={(e) => setInlineNewYear(e.target.value)}
+                maxLength={4}
+                style={{
+                  width: 140,
+                  padding: "7px 10px",
+                  borderRadius: 6,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 13,
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleInlineAddYear}
+                disabled={inlineAdding || !inlineNewYear.trim()}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 5,
+                  padding: "7px 14px",
+                  borderRadius: 6,
+                  background: "#2563eb",
+                  color: "#ffffff",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: "none",
+                  cursor: inlineAdding ? "not-allowed" : "pointer",
+                  opacity: inlineAdding ? 0.7 : 1,
+                }}
+              >
+                <Plus size={14} />
+                {inlineAdding ? "กำลังเพิ่ม..." : "เพิ่มปีการศึกษา"}
+              </button>
+            </div>
           </div>
         </div>
 
