@@ -35,6 +35,28 @@ interface ProfileDbRow {
   user_roles?: Array<{ role: UserRoleType }> | null;
 }
 
+const POSITION_OPTIONS = [
+  "ครูผู้ช่วย",
+  "ครู",
+  "ครูชำนาญการ",
+  "ครูชำนาญการพิเศษ",
+  "ครูเชี่ยวชาญ",
+  "ครูเชี่ยวชาญพิเศษ",
+  "รองผู้อำนวยการสถานศึกษา",
+  "ผู้อำนวยการสถานศึกษา",
+  "บุคลากรทางการศึกษา",
+  "อื่นๆ (ระบุเอง)",
+];
+
+const DEPARTMENT_OPTIONS = [
+  "กลุ่มบริหารงานวิชาการ",
+  "กลุ่มบริหารงานบุคคล",
+  "กลุ่มบริหารงานทั่วไป",
+  "กลุ่มบริหารงานวัดผลและประเมินผล",
+  "กลุ่มบริหารงานงบประมาณและแผนงาน",
+  "อื่นๆ (ระบุเอง)",
+];
+
 export function UsersModule({
   client,
   currentUserRole,
@@ -52,8 +74,10 @@ export function UsersModule({
   const [showPassword, setShowPassword] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteRole, setInviteRole] = useState<UserRoleType>("teacher");
-  const [invitePosition, setInvitePosition] = useState("");
-  const [inviteDepartment, setInviteDepartment] = useState("กลุ่มงานวิชาการ");
+  const [selectedPositionOption, setSelectedPositionOption] = useState("ครูชำนาญการ");
+  const [customPosition, setCustomPosition] = useState("");
+  const [selectedDepartmentOption, setSelectedDepartmentOption] = useState("กลุ่มบริหารงานวิชาการ");
+  const [customDepartment, setCustomDepartment] = useState("");
   const [createdUserInfo, setCreatedUserInfo] = useState<{
     name: string;
     email: string;
@@ -137,6 +161,26 @@ export function UsersModule({
       return;
     }
 
+    const finalPosition =
+      selectedPositionOption === "อื่นๆ (ระบุเอง)"
+        ? customPosition.trim()
+        : selectedPositionOption;
+
+    if (!finalPosition) {
+      setAlertMsg({ text: "กรุณาระบุตำแหน่งของบุคลากร", type: "error" });
+      return;
+    }
+
+    const finalDepartment =
+      selectedDepartmentOption === "อื่นๆ (ระบุเอง)"
+        ? customDepartment.trim()
+        : selectedDepartmentOption;
+
+    if (!finalDepartment) {
+      setAlertMsg({ text: "กรุณาระบุกลุ่มงานหรือฝ่ายของบุคลากร", type: "error" });
+      return;
+    }
+
     setBusy(true);
     setAlertMsg(null);
 
@@ -149,8 +193,8 @@ export function UsersModule({
             email: inviteEmail.trim(),
             password: invitePassword.trim(),
             fullName: inviteName.trim(),
-            position: invitePosition.trim() || "ครูผู้สอน",
-            department: inviteDepartment.trim() || "กลุ่มงานวิชาการ",
+            position: finalPosition,
+            department: finalDepartment,
             role: inviteRole,
             schoolId: school?.id || null,
           }),
@@ -177,8 +221,8 @@ export function UsersModule({
         const newUser: Profile = {
           id: "usr-" + Date.now(),
           full_name: inviteName.trim(),
-          position: invitePosition.trim() || "ครูผู้สอน",
-          department: inviteDepartment.trim() || "กลุ่มงานวิชาการ",
+          position: finalPosition,
+          department: finalDepartment,
           role: inviteRole,
         };
         setUserList([newUser, ...userList]);
@@ -196,7 +240,10 @@ export function UsersModule({
 
       setInviteEmail("");
       setInviteName("");
-      setInvitePosition("");
+      setSelectedPositionOption("ครูชำนาญการ");
+      setCustomPosition("");
+      setSelectedDepartmentOption("กลุ่มบริหารงานวิชาการ");
+      setCustomDepartment("");
       setInvitePassword("Bkwslp@2026");
       setShowInviteModal(false);
     } catch (err: unknown) {
@@ -561,25 +608,55 @@ export function UsersModule({
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <label>
-                  ตำแหน่ง
-                  <input
-                    type="text"
-                    placeholder="เช่น ครูผู้ช่วย, ครูชำนาญการ"
-                    value={invitePosition}
-                    onChange={(e) => setInvitePosition(e.target.value)}
+                  ตำแหน่ง / วิทยฐานะ
+                  <select
+                    value={selectedPositionOption}
+                    onChange={(e) => setSelectedPositionOption(e.target.value)}
                     disabled={busy}
-                  />
+                  >
+                    {POSITION_OPTIONS.map((pos) => (
+                      <option key={pos} value={pos}>
+                        {pos}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedPositionOption === "อื่นๆ (ระบุเอง)" && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="ระบุตำแหน่ง เช่น เจ้าหน้าที่ธุรการ"
+                      value={customPosition}
+                      onChange={(e) => setCustomPosition(e.target.value)}
+                      disabled={busy}
+                      style={{ marginTop: 6 }}
+                    />
+                  )}
                 </label>
 
                 <label>
                   กลุ่มงาน / ฝ่าย
-                  <input
-                    type="text"
-                    placeholder="เช่น งานวิชาการ, กิจกรรม"
-                    value={inviteDepartment}
-                    onChange={(e) => setInviteDepartment(e.target.value)}
+                  <select
+                    value={selectedDepartmentOption}
+                    onChange={(e) => setSelectedDepartmentOption(e.target.value)}
                     disabled={busy}
-                  />
+                  >
+                    {DEPARTMENT_OPTIONS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedDepartmentOption === "อื่นๆ (ระบุเอง)" && (
+                    <input
+                      type="text"
+                      required
+                      placeholder="ระบุกลุ่มงานหรือฝ่าย"
+                      value={customDepartment}
+                      onChange={(e) => setCustomDepartment(e.target.value)}
+                      disabled={busy}
+                      style={{ marginTop: 6 }}
+                    />
+                  )}
                 </label>
               </div>
 
