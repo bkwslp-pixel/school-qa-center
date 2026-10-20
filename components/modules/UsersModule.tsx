@@ -1,7 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Users, UserPlus, CheckCircle2, Search, Shield, AlertCircle, Loader2 } from "lucide-react";
+import {
+  Users,
+  UserPlus,
+  CheckCircle2,
+  Search,
+  Shield,
+  AlertCircle,
+  Loader2,
+  Copy,
+  Check,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import type { Profile, UserRoleType, School } from "@/types/database";
@@ -36,10 +48,19 @@ export function UsersModule({
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>("all");
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteEmail, setInviteEmail] = useState("");
+  const [invitePassword, setInvitePassword] = useState("Bkwslp@2026");
+  const [showPassword, setShowPassword] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteRole, setInviteRole] = useState<UserRoleType>("teacher");
   const [invitePosition, setInvitePosition] = useState("");
   const [inviteDepartment, setInviteDepartment] = useState("กลุ่มงานวิชาการ");
+  const [createdUserInfo, setCreatedUserInfo] = useState<{
+    name: string;
+    email: string;
+    pass: string;
+    role: string;
+  } | null>(null);
+  const [copied, setCopied] = useState(false);
   const [alertMsg, setAlertMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -103,45 +124,53 @@ export function UsersModule({
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteName.trim()) return;
+    if (!inviteName.trim()) {
+      setAlertMsg({ text: "กรุณาระบุชื่อ - สกุล บุคลากร", type: "error" });
+      return;
+    }
+    if (!inviteEmail.trim()) {
+      setAlertMsg({ text: "กรุณาระบุอีเมลสำหรับเข้าสู่ระบบ", type: "error" });
+      return;
+    }
+    if (invitePassword.length < 6) {
+      setAlertMsg({ text: "รหัสผ่านเริ่มต้นต้องมีความยาวอย่างน้อย 6 ตัวอักษร", type: "error" });
+      return;
+    }
 
     setBusy(true);
     setAlertMsg(null);
 
     try {
       if (sb) {
-        const newProfileId = "user-" + Date.now();
-        const profilePayload: {
-          id: string;
-          full_name: string;
-          position: string;
-          department: string;
-          school_id?: string;
-        } = {
-          id: newProfileId,
-          full_name: inviteName.trim(),
-          position: invitePosition.trim() || "ครูผู้สอน",
-          department: inviteDepartment.trim() || "กลุ่มงานวิชาการ",
-        };
-
-        if (school?.id) {
-          profilePayload.school_id = school.id;
-        }
-
-        const { error: profileErr } = await sb.from("profiles").insert(profilePayload);
-
-        if (!profileErr && school?.id) {
-          // Insert role
-          await sb.from("user_roles").insert({
-            user_id: newProfileId,
-            school_id: school.id,
+        const res = await fetch("/api/admin/create-user", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: inviteEmail.trim(),
+            password: invitePassword.trim(),
+            fullName: inviteName.trim(),
+            position: invitePosition.trim() || "ครูผู้สอน",
+            department: inviteDepartment.trim() || "กลุ่มงานวิชาการ",
             role: inviteRole,
-          });
+            schoolId: school?.id || null,
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok || data.error) {
+          throw new Error(data.error || "เกิดข้อผิดพลาดในการสร้างบัญชี");
         }
+
+        setCreatedUserInfo({
+          name: inviteName.trim(),
+          email: inviteEmail.trim(),
+          pass: invitePassword.trim(),
+          role: getRoleLabel(inviteRole),
+        });
 
         await fetchUsers();
         setAlertMsg({
-          text: `เพิ่มข้อมูลบุคลากร "${inviteName}" และบันทึกสิทธิ์ (${getRoleLabel(inviteRole)}) เรียบร้อยแล้ว`,
+          text: `สร้างบัญชีและเพิ่มข้อมูลบุคลากร "${inviteName}" สำเร็จ! สามารถใช้อีเมลและรหัสผ่านเข้าสู่ระบบได้ทันที`,
           type: "success",
         });
       } else {
@@ -153,6 +182,12 @@ export function UsersModule({
           role: inviteRole,
         };
         setUserList([newUser, ...userList]);
+        setCreatedUserInfo({
+          name: inviteName.trim(),
+          email: inviteEmail.trim(),
+          pass: invitePassword.trim(),
+          role: getRoleLabel(inviteRole),
+        });
         setAlertMsg({
           text: `จำลองการเพิ่มข้อมูลบุคลากร "${inviteName}" เรียบร้อย (Mock mode)`,
           type: "success",
@@ -162,6 +197,7 @@ export function UsersModule({
       setInviteEmail("");
       setInviteName("");
       setInvitePosition("");
+      setInvitePassword("Bkwslp@2026");
       setShowInviteModal(false);
     } catch (err: unknown) {
       console.error("Invite user error:", err);
@@ -169,7 +205,7 @@ export function UsersModule({
       setAlertMsg({ text: msg, type: "error" });
     } finally {
       setBusy(false);
-      setTimeout(() => setAlertMsg(null), 5000);
+      setTimeout(() => setAlertMsg(null), 8000);
     }
   };
 
@@ -225,6 +261,94 @@ export function UsersModule({
           </button>
         </div>
       </div>
+
+      {/* Success Notification with Copy info */}
+      {createdUserInfo && (
+        <div
+          className="panel"
+          style={{
+            background: "linear-gradient(135deg, #f0fdf4, #dcfce7)",
+            border: "1px solid #86efac",
+            color: "#166534",
+            padding: 16,
+            borderRadius: 12,
+          }}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 15 }}>
+                <CheckCircle2 size={18} color="#16a34a" />
+                <span>สร้างบัญชีบุคลากรสำเร็จเรียบร้อย!</span>
+              </div>
+              <p style={{ margin: "6px 0 10px", fontSize: 13, color: "#15803d" }}>
+                ท่านสามารถคัดลอกข้อมูลด้านล่างเพื่อส่งให้บุคลากรเข้าใช้งานระบบได้ทันที
+              </p>
+              <div
+                style={{
+                  background: "#ffffff",
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  border: "1px solid #bbf7d0",
+                  fontSize: 13,
+                  display: "grid",
+                  gap: 4,
+                  color: "#1e293b",
+                }}
+              >
+                <div><strong>ชื่อ - สกุล:</strong> {createdUserInfo.name}</div>
+                <div><strong>อีเมลเข้าสู่ระบบ:</strong> <code>{createdUserInfo.email}</code></div>
+                <div>
+                  <strong>รหัสผ่านเริ่มต้น:</strong>{" "}
+                  <code style={{ background: "#f1f5f9", padding: "2px 6px", borderRadius: 4, fontWeight: 700, color: "#0f172a" }}>
+                    {createdUserInfo.pass}
+                  </code>
+                </div>
+                <div><strong>สิทธิ์การใช้งาน:</strong> {createdUserInfo.role}</div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 4 }}>
+              <button
+                type="button"
+                className="primary-button"
+                style={{
+                  background: "#16a34a",
+                  color: "#fff",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  fontSize: 13,
+                  padding: "8px 14px",
+                }}
+                onClick={() => {
+                  const textToCopy = `ข้อมูลเข้าสู่ระบบ School QA Center (รร.เทศบาล ๑ บ้านกลาง)\nเว็บไซต์: https://school-qa-center-nextjs-starter.vercel.app\nชื่อผู้ใช้/อีเมล: ${createdUserInfo.email}\nรหัสผ่านเริ่มต้น: ${createdUserInfo.pass}\nบทบาท: ${createdUserInfo.role}`;
+                  navigator.clipboard.writeText(textToCopy);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 3000);
+                }}
+              >
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? "คัดลอกแล้ว!" : "คัดลอกข้อมูลส่งให้บุคลากร"}
+              </button>
+              <button
+                type="button"
+                style={{
+                  background: "transparent",
+                  border: "1px solid #bbf7d0",
+                  color: "#166534",
+                  cursor: "pointer",
+                  fontSize: 13,
+                  padding: "7px 12px",
+                  borderRadius: 6,
+                }}
+                onClick={() => setCreatedUserInfo(null)}
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {alertMsg && (
         <div
@@ -387,14 +511,52 @@ export function UsersModule({
               </label>
 
               <label>
-                อีเมลสำหรับเข้าใช้งาน
+                อีเมลสำหรับเข้าใช้งาน <span style={{ color: "#d93838" }}>*</span>
                 <input
                   type="email"
+                  required
                   placeholder="teacher@banklang.ac.th"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   disabled={busy}
                 />
+              </label>
+
+              <label>
+                รหัสผ่านเริ่มต้นสำหรับเข้าใช้งาน <span style={{ color: "#d93838" }}>*</span>
+                <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    placeholder="เช่น Bkwslp@2026"
+                    value={invitePassword}
+                    onChange={(e) => setInvitePassword(e.target.value)}
+                    disabled={busy}
+                    style={{ width: "100%", paddingRight: 40 }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: "absolute",
+                      right: 10,
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#64748b",
+                      padding: 4,
+                      display: "flex",
+                      alignItems: "center",
+                    }}
+                    aria-label={showPassword ? "ซ่อนรหัสผ่าน" : "แสดงรหัสผ่าน"}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+                <span style={{ fontSize: 11, color: "#64748b", marginTop: 2, display: "block" }}>
+                  บุคลากรจะใช้รหัสผ่านนี้เพื่อล็อกอินเข้าสู่ระบบผ่านหน้าเว็บ
+                </span>
               </label>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
