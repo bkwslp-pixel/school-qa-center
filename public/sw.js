@@ -1,17 +1,11 @@
-const CACHE_NAME = "qa-bkms1-cache-v1";
+const CACHE_NAME = "qa-bkms1-cache-v3";
 const STATIC_ASSETS = [
-  "/",
   "/manifest.json",
   "/logo.png",
   "/favicon.png"
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
-  );
   self.skipWaiting();
 });
 
@@ -25,23 +19,38 @@ self.addEventListener("activate", (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return (
-        cachedResponse ||
-        fetch(event.request).catch(() => {
-          if (event.request.headers.get("accept")?.includes("text/html")) {
-            return caches.match("/");
+
+  // For HTML page requests, always fetch from network first so users get latest updates!
+  if (
+    event.request.mode === "navigate" ||
+    event.request.headers.get("accept")?.includes("text/html")
+  ) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.status === 200) {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
+          return response;
         })
-      );
-    })
+        .catch(() => caches.match(event.request) || caches.match("/"))
+    );
+    return;
+  }
+
+  // For JS chunks and other assets, try network then cache
+  event.respondWith(
+    fetch(event.request)
+      .then((response) => {
+        return response;
+      })
+      .catch(() => caches.match(event.request))
   );
 });

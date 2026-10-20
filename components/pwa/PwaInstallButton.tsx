@@ -23,7 +23,7 @@ export function PwaInstallButton() {
       navigator.serviceWorker
         .register("/sw.js")
         .then((reg) => {
-          console.log("Service Worker registered successfully:", reg.scope);
+          reg.update();
         })
         .catch((err) => {
           console.warn("Service Worker registration failed:", err);
