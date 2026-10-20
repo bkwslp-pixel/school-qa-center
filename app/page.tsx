@@ -25,6 +25,7 @@ import { SettingsModule } from "@/components/modules/SettingsModule";
 
 import { LoginModal } from "@/components/auth/LoginModal";
 import { InvitePasswordModal } from "@/components/auth/InvitePasswordModal";
+import { ChangePasswordModal } from "@/components/auth/ChangePasswordModal";
 
 import { BASIC_EDUCATION_INDICATORS } from "@/lib/qa-framework";
 
@@ -73,6 +74,7 @@ export default function DashboardPage() {
 
   // Invite & recovery form states
   const [showInvitePassword, setShowInvitePassword] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   const [invitePassword, setInvitePassword] = useState("");
   const [invitePasswordConfirm, setInvitePasswordConfirm] = useState("");
   const [invitePasswordMessage, setInvitePasswordMessage] = useState("");
@@ -377,6 +379,7 @@ export default function DashboardPage() {
           loadState={loadState}
           onSignOut={handleSignOut}
           onOpenLogin={() => setShowLogin(true)}
+          onOpenChangePassword={() => setShowChangePassword(true)}
           notificationCount={tasks.filter((t) => t.status !== "completed").length}
         />
 
@@ -574,6 +577,14 @@ export default function DashboardPage() {
         onSubmit={handleSetInvitedUserPassword}
         authBusy={authBusy}
         message={invitePasswordMessage}
+        client={client}
+      />
+
+      {/* Change Password Modal for logged-in user */}
+      <ChangePasswordModal
+        isOpen={showChangePassword && Boolean(user)}
+        onClose={() => setShowChangePassword(false)}
+        user={user}
         client={client}
       />
     </main>
