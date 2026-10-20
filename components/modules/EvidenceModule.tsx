@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   FolderOpen,
   Upload,
@@ -11,10 +11,13 @@ import {
   Filter,
   Trash2,
   Download,
-  AlertCircle,
-  CheckCircle2,
   Loader2,
   Plus,
+  BarChart3,
+  CheckCircle2,
+  AlertCircle,
+  GraduationCap,
+  BookOpen,
 } from "lucide-react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
@@ -30,14 +33,24 @@ interface EvidenceModuleProps {
   onEvidenceCountChange?: (count: number) => void;
 }
 
+import {
+  BASIC_EDUCATION_INDICATORS,
+  EARLY_CHILDHOOD_INDICATORS,
+  auditIndicatorEvidence,
+  type EvidenceAuditResult,
+} from "@/lib/qa-framework";
+
 const fallbackIndicatorOptions = [
-  { code: "1.1", label: "1.1 พัฒนาการด้านร่างกาย สมวัย มีสุขนิสัยที่ดี" },
-  { code: "1.2", label: "1.2 คุณธรรม จริยธรรม และค่านิยมที่พึงประสงค์" },
-  { code: "1.3", label: "1.3 ความสามารถในการอ่าน คิดวิเคราะห์ และเขียน" },
-  { code: "1.4", label: "1.4 ทักษะการใช้เทคโนโลยีดิจิทัลและการสื่อสาร" },
-  { code: "1.5", label: "1.5 สุขภาวะทางจิตและสังคม มีผลสัมฤทธิ์ตามเกณฑ์" },
-  { code: "2.1", label: "2.1 เป้าหมาย วิสัยทัศน์ และพันธกิจที่ชัดเจน" },
-  { code: "3.1", label: "3.1 การจัดการเรียนรู้ผ่านการปฏิบัติจริง (Active Learning)" },
+  // ขั้นพื้นฐาน (16 ตัวชี้วัด)
+  ...BASIC_EDUCATION_INDICATORS.map((ind) => ({
+    code: ind.code,
+    label: `[ขั้นพื้นฐาน] ${ind.code} ${ind.title}`,
+  })),
+  // ปฐมวัย (18 ตัวชี้วัด)
+  ...EARLY_CHILDHOOD_INDICATORS.map((ind) => ({
+    code: `ปฐมวัย-${ind.code}`,
+    label: `[ปฐมวัย] ${ind.code} ${ind.title}`,
+  })),
 ];
 
 export function EvidenceModule({
@@ -56,6 +69,8 @@ export function EvidenceModule({
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState("all");
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [viewMode, setViewMode] = useState<"vault" | "audit">("vault");
+  const [auditLevel, setAuditLevel] = useState<"basic" | "early">("basic");
 
   // Form states
   const [newTitle, setNewTitle] = useState("");
@@ -426,6 +441,36 @@ interface EvidenceDbRow {
     return matchesSearch && matchesType;
   });
 
+  // Calculate Automated Evidence Completeness Audit
+  const auditIndicators = auditLevel === "basic" ? BASIC_EDUCATION_INDICATORS : EARLY_CHILDHOOD_INDICATORS;
+
+  const auditResults: EvidenceAuditResult[] = useMemo(() => {
+    return auditIndicators.map((ind) => {
+      const targetCode = auditLevel === "early" ? `ปฐมวัย-${ind.code}` : ind.code;
+      const count = evidenceList.filter((e) => {
+        return e.indicator_code === targetCode || e.indicator_code === ind.code;
+      }).length;
+
+      return auditIndicatorEvidence(ind, count);
+    });
+  }, [auditIndicators, auditLevel, evidenceList]);
+
+  const auditStats = useMemo(() => {
+    const total = auditResults.length;
+    const completeCount = auditResults.filter((r) => r.status === "complete").length;
+    const partialCount = auditResults.filter((r) => r.status === "partial").length;
+    const missingCount = auditResults.filter((r) => r.status === "missing").length;
+    const overallPercent = total > 0 ? Math.round((completeCount / total) * 100) : 0;
+
+    return { total, completeCount, partialCount, missingCount, overallPercent };
+  }, [auditResults]);
+
+  const handleOpenUploadForIndicator = (code: string) => {
+    const formattedCode = auditLevel === "early" ? `ปฐมวัย-${code}` : code;
+    setNewIndicatorCode(formattedCode);
+    setShowUploadModal(true);
+  };
+
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {/* Top Banner */}
@@ -434,21 +479,70 @@ interface EvidenceDbRow {
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#82d6c3", fontSize: 13, marginBottom: 4 }}>
               <FolderOpen size={18} />
-              <span>คลังหลักฐานดิจิทัล (Digital Evidence Vault)</span>
+              <span>คลังหลักฐานดิจิทัลและระบบตรวจสอบความครบถ้วน (Evidence Vault & Audit)</span>
             </div>
             <h1 style={{ margin: 0, fontSize: 22, color: "#fff" }}>คลังหลักฐานและร่องรอยการปฏิบัติงาน</h1>
             <p style={{ margin: "6px 0 0", color: "#c0d8eb", fontSize: 13 }}>
-              จัดเก็บเอกสาร แฟ้มสะสมงาน ภาพกิจกรรม และลิงก์ Google Drive เชื่อมโยงตามตัวชี้วัด IQA & EQA
+              จัดเก็บเอกสาร แฟ้มสะสมงาน ภาพกิจกรรม และลิงก์ Google Drive พร้อมระบบตรวจสอบความพร้อมตามเกณฑ์ สมศ.
             </p>
           </div>
 
-          <button
-            className="primary-button"
-            style={{ background: "linear-gradient(120deg, #10b981, #059669)", display: "flex", alignItems: "center", gap: 8 }}
-            onClick={() => setShowUploadModal(true)}
-          >
-            <Upload size={16} /> อัปโหลด / แนบหลักฐานใหม่
-          </button>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "flex",
+                background: "rgba(255, 255, 255, 0.12)",
+                padding: 4,
+                borderRadius: 10,
+                gap: 4,
+              }}
+            >
+              <button
+                type="button"
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  border: "none",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  background: viewMode === "vault" ? "#ffffff" : "transparent",
+                  color: viewMode === "vault" ? "#123b5d" : "#e2e8f0",
+                }}
+                onClick={() => setViewMode("vault")}
+              >
+                คลังไฟล์ ({evidenceList.length})
+              </button>
+              <button
+                type="button"
+                style={{
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  border: "none",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  background: viewMode === "audit" ? "#ffffff" : "transparent",
+                  color: viewMode === "audit" ? "#0f766e" : "#e2e8f0",
+                }}
+                onClick={() => setViewMode("audit")}
+              >
+                <BarChart3 size={14} />
+                ตรวจสอบความครบถ้วน ({auditStats.overallPercent}%)
+              </button>
+            </div>
+
+            <button
+              className="primary-button"
+              style={{ background: "linear-gradient(120deg, #10b981, #059669)", display: "flex", alignItems: "center", gap: 8 }}
+              onClick={() => setShowUploadModal(true)}
+            >
+              <Upload size={16} /> อัปโหลด / แนบหลักฐานใหม่
+            </button>
+          </div>
         </div>
       </div>
 
@@ -470,191 +564,420 @@ interface EvidenceDbRow {
         </div>
       )}
 
-      {/* Control Bar */}
-      <div className="panel" style={{ padding: "12px 16px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f3f7fc", padding: "6px 12px", borderRadius: 8, border: "1px solid #e7eef8", width: "min(100%, 360px)" }}>
-            <Search size={16} color="#7890b2" />
-            <input
-              type="text"
-              placeholder="ค้นหาชื่อเอกสาร คำอธิบาย หรือรหัสตัวชี้วัด (เช่น 1.1)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ border: 0, outline: 0, background: "transparent", fontSize: 12, width: "100%" }}
-            />
+      {/* VIEW 1: EVIDENCE COMPLETENESS AUDIT & GAP ANALYSIS */}
+      {viewMode === "audit" && (
+        <div style={{ display: "grid", gap: 16 }}>
+          {/* Audit Controls & Framework Switcher */}
+          <div className="panel" style={{ padding: 18, borderRadius: 12 }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                flexWrap: "wrap",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              <div>
+                <h2 style={{ fontSize: 17, margin: "0 0 4px", color: "#0f172a", fontWeight: 700 }}>
+                  ผลการตรวจสอบความครบถ้วนของร่องรอยหลักฐาน (Evidence Gap Analysis)
+                </h2>
+                <span style={{ fontSize: 13, color: "#64748b" }}>
+                  คำนวณอัตโนมัติเปรียบเทียบกับรายการหลักฐานเชิงประจักษ์ตามคู่มือ สมศ. พ.ศ. ๒๕๖๗ - ๒๕๗๑
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: 6, background: "#f1f5f9", padding: 4, borderRadius: 8 }}>
+                <button
+                  type="button"
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 6,
+                    border: "none",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: auditLevel === "basic" ? "#ffffff" : "transparent",
+                    color: auditLevel === "basic" ? "#1e40af" : "#64748b",
+                    boxShadow: auditLevel === "basic" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  }}
+                  onClick={() => setAuditLevel("basic")}
+                >
+                  <BookOpen size={14} /> ขั้นพื้นฐาน (16 ตัวชี้วัด)
+                </button>
+                <button
+                  type="button"
+                  style={{
+                    padding: "6px 14px",
+                    borderRadius: 6,
+                    border: "none",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    background: auditLevel === "early" ? "#ffffff" : "transparent",
+                    color: auditLevel === "early" ? "#e11d48" : "#64748b",
+                    boxShadow: auditLevel === "early" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  }}
+                  onClick={() => setAuditLevel("early")}
+                >
+                  <GraduationCap size={14} /> ปฐมวัย (18 ตัวชี้วัด)
+                </button>
+              </div>
+            </div>
+
+            {/* Completeness KPI Summary Cards */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+              <div style={{ padding: 14, borderRadius: 8, background: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+                <span style={{ fontSize: 11, color: "#166534", fontWeight: 600 }}>หลักฐานครบตามเกณฑ์ (Ready)</span>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#15803d", marginTop: 4 }}>
+                  {auditStats.completeCount} <span style={{ fontSize: 13, fontWeight: 400 }}>ตัวชี้วัด</span>
+                </div>
+                <span style={{ fontSize: 11, color: "#16a34a" }}>พร้อมรับรองระดับ ๓ ขึ้นไป</span>
+              </div>
+
+              <div style={{ padding: 14, borderRadius: 8, background: "#fff7ed", border: "1px solid #fed7aa" }}>
+                <span style={{ fontSize: 11, color: "#9a3412", fontWeight: 600 }}>มีหลักฐานบางส่วน (Partial)</span>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#c2410c", marginTop: 4 }}>
+                  {auditStats.partialCount} <span style={{ fontSize: 13, fontWeight: 400 }}>ตัวชี้วัด</span>
+                </div>
+                <span style={{ fontSize: 11, color: "#ea580c" }}>ควรเพิ่มร่องรอยให้ครบถ้วน</span>
+              </div>
+
+              <div style={{ padding: 14, borderRadius: 8, background: "#fef2f2", border: "1px solid #fecaca" }}>
+                <span style={{ fontSize: 11, color: "#991b1b", fontWeight: 600 }}>ยังขาดหลักฐาน (Missing)</span>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#dc2626", marginTop: 4 }}>
+                  {auditStats.missingCount} <span style={{ fontSize: 13, fontWeight: 400 }}>ตัวชี้วัด</span>
+                </div>
+                <span style={{ fontSize: 11, color: "#ef4444" }}>เสี่ยงไม่ผ่านเกณฑ์มาตรฐาน</span>
+              </div>
+
+              <div style={{ padding: 14, borderRadius: 8, background: "#eff6ff", border: "1px solid #bfdbfe" }}>
+                <span style={{ fontSize: 11, color: "#1e40af", fontWeight: 600 }}>ความพร้อมโดยรวม (Readiness)</span>
+                <div style={{ fontSize: 22, fontWeight: 700, color: "#2563eb", marginTop: 4 }}>
+                  {auditStats.overallPercent}%
+                </div>
+                <span style={{ fontSize: 11, color: "#3b82f6" }}>อัตราความสมบูรณ์เชิงประจักษ์</span>
+              </div>
+            </div>
           </div>
 
-          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-            <Filter size={15} color="#6a82a4" />
-            <span style={{ fontSize: 12, color: "var(--muted)" }}>ประเภท:</span>
-            {[
-              { id: "all", label: "ทั้งหมด" },
-              { id: "document", label: "เอกสาร PDF/Word" },
-              { id: "image", label: "รูปภาพ" },
-              { id: "drive_file", label: "Google Drive" },
-              { id: "link", label: "ลิงก์เว็บไซต์" },
-            ].map((t) => (
-              <button
-                key={t.id}
-                onClick={() => setTypeFilter(t.id)}
-                style={{
-                  border: "1px solid",
-                  borderColor: typeFilter === t.id ? "#2072f4" : "#d8e3f2",
-                  background: typeFilter === t.id ? "#eff5ff" : "#fff",
-                  color: typeFilter === t.id ? "#1b6fe8" : "#4a668e",
-                  borderRadius: 6,
-                  padding: "5px 10px",
-                  fontSize: 11,
-                  cursor: "pointer",
-                }}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Evidence Cards Grid */}
-      {loading ? (
-        <div className="panel" style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)" }}>
-          <Loader2 size={28} className="spinner" style={{ animation: "spin 1s linear infinite", margin: "0 auto 8px" }} />
-          <p style={{ margin: 0, fontSize: 13 }}>กำลังโหลดข้อมูลคลังหลักฐานจาก Supabase...</p>
-        </div>
-      ) : filtered.length === 0 ? (
-        <div className="panel" style={{ textAlign: "center", padding: "40px 20px" }}>
-          <FolderOpen size={40} color="#9bb4d0" style={{ margin: "0 auto 12px" }} />
-          <h3 style={{ margin: "0 0 6px", fontSize: 16, color: "#163a63" }}>ไม่พบเอกสารหลักฐานที่ค้นหา</h3>
-          <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--muted)" }}>
-            ยังไม่มีรายการเอกสารที่ตรงกับเงื่อนไข หรือยังไม่ได้อัปโหลดหลักฐานสำหรับตัวชี้วัดนี้
-          </p>
-          <button
-            className="primary-button"
-            style={{ margin: "0 auto", display: "inline-flex", alignItems: "center", gap: 6 }}
-            onClick={() => setShowUploadModal(true)}
-          >
-            <Plus size={16} /> อัปโหลดเอกสารแรก
-          </button>
-        </div>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
-          {filtered.map((item) => {
-            const isDoc = item.evidence_type === "document";
-            const isDrive = item.evidence_type === "drive_file";
-            const isImg = item.evidence_type === "image";
-            const isDel = deletingId === item.id;
-
-            return (
+          {/* Detailed Audit Table & Cards */}
+          <div style={{ display: "grid", gap: 12 }}>
+            {auditResults.map((audit) => (
               <div
-                key={item.id}
+                key={audit.code}
                 className="panel"
                 style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  justifyContent: "space-between",
-                  gap: 12,
-                  transition: "box-shadow 0.2s ease, transform 0.2s ease",
-                  opacity: isDel ? 0.5 : 1,
-                  position: "relative",
+                  padding: 16,
+                  borderRadius: 10,
+                  border: `1.5px solid ${audit.status === "complete" ? "#bbf7d0" : audit.status === "partial" ? "#fed7aa" : "#fecaca"}`,
+                  background: audit.status === "complete" ? "#fcfffd" : "#ffffff",
                 }}
               >
-                <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 5,
-                        padding: "3px 8px",
-                        borderRadius: 6,
-                        fontSize: 11,
-                        fontWeight: 600,
-                        background: isDrive ? "#e8f8f5" : isDoc ? "#eaf2ff" : isImg ? "#fff3e5" : "#f1f5f9",
-                        color: isDrive ? "#0d8c6b" : isDoc ? "#2067d8" : isImg ? "#c46a00" : "#475569",
-                      }}
-                    >
-                      {isDrive ? <ExternalLink size={13} /> : isDoc ? <FileText size={13} /> : isImg ? <ImageIcon size={13} /> : <ExternalLink size={13} />}
-                      {isDrive ? "Google Drive" : isDoc ? "เอกสาร (Document)" : isImg ? "ภาพถ่ายหลักฐาน" : "ลิงก์ภายนอก"}
-                    </span>
-
-                    {item.indicator_code && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    flexWrap: "wrap",
+                    gap: 12,
+                    marginBottom: 10,
+                  }}
+                >
+                  <div style={{ maxWidth: "75%" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 6,
+                          background: "#e2e8f0",
+                          color: "#1e293b",
+                        }}
+                      >
+                        ตัวชี้วัดที่ {audit.code}
+                      </span>
+                      <span style={{ fontSize: 12, color: "#64748b" }}>{audit.standardCode}</span>
                       <span
                         style={{
                           fontSize: 11,
-                          fontWeight: 700,
-                          background: "#f0f4f9",
-                          color: "#1c3c66",
-                          padding: "2px 7px",
-                          borderRadius: 4,
+                          fontWeight: 600,
+                          padding: "2px 8px",
+                          borderRadius: 10,
+                          color: "#ffffff",
+                          background: audit.statusColor,
                         }}
                       >
-                        ตัวชี้วัด {item.indicator_code}
+                        {audit.statusText}
                       </span>
-                    )}
+                    </div>
+                    <strong style={{ fontSize: 15, color: "#0f172a" }}>{audit.title}</strong>
                   </div>
 
-                  <strong style={{ fontSize: 14, lineHeight: 1.5, color: "var(--ink)", display: "block" }}>
-                    {item.title}
-                  </strong>
-                  {item.description && (
-                    <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
-                      {item.description}
-                    </p>
-                  )}
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ textAlign: "right" }}>
+                      <span style={{ fontSize: 11, color: "#64748b", display: "block" }}>หลักฐานที่แนบแล้ว</span>
+                      <strong style={{ fontSize: 16, color: audit.statusColor }}>
+                        {audit.attachedCount} <span style={{ fontSize: 11, color: "#64748b" }}>/ ขั้นต่ำ {audit.expectedMinCount}</span>
+                      </strong>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="primary-button"
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: 12,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                      onClick={() => handleOpenUploadForIndicator(audit.code)}
+                    >
+                      <Plus size={14} /> แนบหลักฐาน
+                    </button>
+                  </div>
                 </div>
 
-                <div style={{ borderTop: "1px solid #edf2f8", paddingTop: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#617d9e", marginBottom: 8 }}>
-                    <span>{item.uploader_name || "บุคลากร"}</span>
-                    <span>{fmtSize(item.file_size_bytes)} • {fmtDate(item.created_at)}</span>
-                  </div>
+                {/* Progress Bar */}
+                <div style={{ width: "100%", height: 6, background: "#f1f5f9", borderRadius: 3, overflow: "hidden", margin: "8px 0" }}>
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${audit.completenessPercent}%`,
+                      background: audit.statusColor,
+                      transition: "width 0.3s ease",
+                    }}
+                  />
+                </div>
 
-                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
-                    <button
-                      onClick={() => handleOpenEvidence(item)}
-                      style={{
-                        background: "#f0f7ff",
-                        border: "1px solid #cce3ff",
-                        color: "#1b6ee4",
-                        borderRadius: 6,
-                        padding: "5px 10px",
-                        fontSize: 11,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        cursor: "pointer",
-                      }}
-                      title="เปิดดูหรือดาวน์โหลด"
-                    >
-                      {item.external_url ? <ExternalLink size={13} /> : <Download size={13} />}
-                      {item.external_url ? "เปิดลิงก์" : "ดาวน์โหลด / ดูไฟล์"}
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteEvidence(item)}
-                      disabled={isDel}
-                      style={{
-                        background: "#fff1f1",
-                        border: "1px solid #ffd1d1",
-                        color: "#d93838",
-                        borderRadius: 6,
-                        padding: "5px 8px",
-                        fontSize: 11,
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 4,
-                        cursor: isDel ? "not-allowed" : "pointer",
-                      }}
-                      title="ลบเอกสารหลักฐาน"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                {/* Required Evidence Checklist from SomS */}
+                <div style={{ marginTop: 10, padding: 10, background: "#f8fafc", borderRadius: 6, border: "1px dashed #cbd5e1" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#475569", display: "block", marginBottom: 4 }}>
+                    รายการหลักฐานเชิงประจักษ์ที่ สมศ. ต้องการตรวจสอบ (ตามคู่มือ):
+                  </span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {audit.requiredExamples.map((ex, idx) => (
+                      <span
+                        key={idx}
+                        style={{
+                          fontSize: 11,
+                          padding: "2px 8px",
+                          background: "#ffffff",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 4,
+                          color: "#334155",
+                        }}
+                      >
+                        • {ex}
+                      </span>
+                    ))}
                   </div>
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
+      )}
+
+      {/* VIEW 2: REGULAR EVIDENCE VAULT FILE CARDS */}
+      {viewMode === "vault" && (
+        <>
+          {/* Control Bar */}
+          <div className="panel" style={{ padding: "12px 16px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f3f7fc", padding: "6px 12px", borderRadius: 8, border: "1px solid #e7eef8", width: "min(100%, 360px)" }}>
+                <Search size={16} color="#7890b2" />
+                <input
+                  type="text"
+                  placeholder="ค้นหาชื่อเอกสาร คำอธิบาย หรือรหัสตัวชี้วัด (เช่น 1.1)..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  style={{ border: 0, outline: 0, background: "transparent", fontSize: 12, width: "100%" }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                <Filter size={15} color="#6a82a4" />
+                <span style={{ fontSize: 12, color: "var(--muted)" }}>ประเภท:</span>
+                {[
+                  { id: "all", label: "ทั้งหมด" },
+                  { id: "document", label: "เอกสาร PDF/Word" },
+                  { id: "image", label: "รูปภาพ" },
+                  { id: "drive_file", label: "Google Drive" },
+                  { id: "link", label: "ลิงก์เว็บไซต์" },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    onClick={() => setTypeFilter(t.id)}
+                    style={{
+                      border: "1px solid",
+                      borderColor: typeFilter === t.id ? "#2072f4" : "#d8e3f2",
+                      background: typeFilter === t.id ? "#eff5ff" : "#fff",
+                      color: typeFilter === t.id ? "#1b6fe8" : "#4a668e",
+                      borderRadius: 6,
+                      padding: "5px 10px",
+                      fontSize: 11,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Evidence Cards Grid */}
+          {loading ? (
+            <div className="panel" style={{ textAlign: "center", padding: "40px 20px", color: "var(--muted)" }}>
+              <Loader2 size={28} className="spinner" style={{ animation: "spin 1s linear infinite", margin: "0 auto 8px" }} />
+              <p style={{ margin: 0, fontSize: 13 }}>กำลังโหลดข้อมูลคลังหลักฐานจาก Supabase...</p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="panel" style={{ textAlign: "center", padding: "40px 20px" }}>
+              <FolderOpen size={40} color="#9bb4d0" style={{ margin: "0 auto 12px" }} />
+              <h3 style={{ margin: "0 0 6px", fontSize: 16, color: "#163a63" }}>ไม่พบเอกสารหลักฐานที่ค้นหา</h3>
+              <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--muted)" }}>
+                ยังไม่มีรายการเอกสารที่ตรงกับเงื่อนไข หรือยังไม่ได้อัปโหลดหลักฐานสำหรับตัวชี้วัดนี้
+              </p>
+              <button
+                className="primary-button"
+                style={{ margin: "0 auto", display: "inline-flex", alignItems: "center", gap: 6 }}
+                onClick={() => setShowUploadModal(true)}
+              >
+                <Plus size={16} /> อัปโหลดเอกสารแรก
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: 14 }}>
+              {filtered.map((item) => {
+                const isDoc = item.evidence_type === "document";
+                const isDrive = item.evidence_type === "drive_file";
+                const isImg = item.evidence_type === "image";
+                const isDel = deletingId === item.id;
+
+                return (
+                  <div
+                    key={item.id}
+                    className="panel"
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                      gap: 12,
+                      transition: "box-shadow 0.2s ease, transform 0.2s ease",
+                      opacity: isDel ? 0.5 : 1,
+                      position: "relative",
+                    }}
+                  >
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 8 }}>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 5,
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            background: isDrive ? "#e8f8f5" : isDoc ? "#eaf2ff" : isImg ? "#fff3e5" : "#f1f5f9",
+                            color: isDrive ? "#0d8c6b" : isDoc ? "#2067d8" : isImg ? "#c46a00" : "#475569",
+                          }}
+                        >
+                          {isDrive ? <ExternalLink size={13} /> : isDoc ? <FileText size={13} /> : isImg ? <ImageIcon size={13} /> : <ExternalLink size={13} />}
+                          {isDrive ? "Google Drive" : isDoc ? "เอกสาร (Document)" : isImg ? "ภาพถ่ายหลักฐาน" : "ลิงก์ภายนอก"}
+                        </span>
+
+                        {item.indicator_code && (
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              background: "#f0f4f9",
+                              color: "#1c3c66",
+                              padding: "2px 7px",
+                              borderRadius: 4,
+                            }}
+                          >
+                            ตัวชี้วัด {item.indicator_code}
+                          </span>
+                        )}
+                      </div>
+
+                      <strong style={{ fontSize: 14, lineHeight: 1.5, color: "var(--ink)", display: "block" }}>
+                        {item.title}
+                      </strong>
+                      {item.description && (
+                        <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)", lineHeight: 1.5 }}>
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+
+                    <div style={{ borderTop: "1px solid #edf2f8", paddingTop: 10 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, color: "#617d9e", marginBottom: 8 }}>
+                        <span>{item.uploader_name || "บุคลากร"}</span>
+                        <span>{fmtSize(item.file_size_bytes)} • {fmtDate(item.created_at)}</span>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                        <button
+                          onClick={() => handleOpenEvidence(item)}
+                          style={{
+                            background: "#f0f7ff",
+                            border: "1px solid #cce3ff",
+                            color: "#1b6ee4",
+                            borderRadius: 6,
+                            padding: "5px 10px",
+                            fontSize: 11,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            cursor: "pointer",
+                          }}
+                          title="เปิดดูหรือดาวน์โหลด"
+                        >
+                          {item.external_url ? <ExternalLink size={13} /> : <Download size={13} />}
+                          {item.external_url ? "เปิดลิงก์" : "ดาวน์โหลด / ดูไฟล์"}
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteEvidence(item)}
+                          disabled={isDel}
+                          style={{
+                            background: "#fff1f1",
+                            border: "1px solid #ffd1d1",
+                            color: "#d93838",
+                            borderRadius: 6,
+                            padding: "5px 8px",
+                            fontSize: 11,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            cursor: isDel ? "not-allowed" : "pointer",
+                          }}
+                          title="ลบเอกสารหลักฐาน"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       {/* Upload / Link Modal */}

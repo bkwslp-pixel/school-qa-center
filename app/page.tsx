@@ -26,85 +26,20 @@ import { SettingsModule } from "@/components/modules/SettingsModule";
 import { LoginModal } from "@/components/auth/LoginModal";
 import { InvitePasswordModal } from "@/components/auth/InvitePasswordModal";
 
-const standardEducationIndicators: Indicator[] = [
-  {
-    id: "i1",
-    code: "1.1",
-    title_th: "ผู้เรียนมีพัฒนาการด้านร่างกาย สมวัย มีสุขนิสัยที่ดี",
-    standard_id: "s1",
-    quality_level: "ยังไม่ประเมิน",
-    evidence_count: 0,
-    responsible_person: "กลุ่มสาระฯ สุขศึกษาและพลศึกษา",
-    status: "not_started",
-    weight: 1.0,
-  },
-  {
-    id: "i2",
-    code: "1.2",
-    title_th: "ผู้เรียนมีคุณธรรม จริยธรรม และค่านิยมที่พึงประสงค์",
-    standard_id: "s1",
-    quality_level: "ยังไม่ประเมิน",
-    evidence_count: 0,
-    responsible_person: "งานส่งเสริมคุณธรรม จริยธรรม",
-    status: "not_started",
-    weight: 1.0,
-  },
-  {
-    id: "i3",
-    code: "1.3",
-    title_th: "ผู้เรียนมีความสามารถในการอ่าน คิดวิเคราะห์ และเขียน",
-    standard_id: "s1",
-    quality_level: "ยังไม่ประเมิน",
-    evidence_count: 0,
-    responsible_person: "กลุ่มสาระฯ ภาษาไทย",
-    status: "not_started",
-    weight: 1.5,
-  },
-  {
-    id: "i4",
-    code: "1.4",
-    title_th: "ผู้เรียนมีทักษะการใช้เทคโนโลยีดิจิทัลและการสื่อสาร",
-    standard_id: "s1",
-    quality_level: "ยังไม่ประเมิน",
-    evidence_count: 0,
-    responsible_person: "กลุ่มสาระฯ วิทยาศาสตร์และเทคโนโลยี",
-    status: "not_started",
-    weight: 1.0,
-  },
-  {
-    id: "i5",
-    code: "1.5",
-    title_th: "ผู้เรียนมีสุขภาวะทางจิตและสังคม มีผลสัมฤทธิ์ตามเกณฑ์",
-    standard_id: "s1",
-    quality_level: "ยังไม่ประเมิน",
-    evidence_count: 0,
-    responsible_person: "งานแนะแนวการศึกษา",
-    status: "not_started",
-    weight: 1.0,
-  },
-  {
-    id: "i6",
-    code: "2.1",
-    title_th: "สถานศึกษามีเป้าหมาย วิสัยทัศน์ และพันธกิจที่ชัดเจน",
-    standard_id: "s2",
-    quality_level: "ยังไม่ประเมิน",
-    evidence_count: 0,
-    responsible_person: "ฝ่ายบริหารแผนงานและนโยบาย",
-    status: "not_started",
-    weight: 1.0,
-  },
-  {
-    id: "i7",
-    code: "3.1",
-    title_th: "จัดการเรียนรู้ผ่านกระบวนการคิดและปฏิบัติจริง (Active Learning)",
-    standard_id: "s3",
-    quality_level: "ยังไม่ประเมิน",
-    evidence_count: 0,
-    responsible_person: "ฝ่ายพัฒนาวิชาการและครูผู้สอนทุกคน",
-    status: "not_started",
-    weight: 1.5,
-  },
-];
+import { BASIC_EDUCATION_INDICATORS } from "@/lib/qa-framework";
+
+const standardEducationIndicators: Indicator[] = BASIC_EDUCATION_INDICATORS.map((ind) => ({
+  id: `ind-${ind.code}`,
+  code: ind.code,
+  title_th: ind.title,
+  standard_id:
+    ind.standardCode === "มาตรฐานที่ ๑" ? "s1" : ind.standardCode === "มาตรฐานที่ ๒" ? "s2" : "s3",
+  quality_level: "รอการประเมิน",
+  evidence_count: 0,
+  responsible_person: "คณะกรรมการประกันคุณภาพและกลุ่มสาระการเรียนรู้",
+  status: "not_started",
+  weight: ind.weight,
+}));
 
 const educationLevels = ["ทุกระดับ", "ปฐมวัย", "ประถมศึกษา", "มัธยมศึกษา"];
 

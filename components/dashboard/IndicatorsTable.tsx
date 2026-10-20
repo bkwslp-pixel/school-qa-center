@@ -22,9 +22,9 @@ export function IndicatorsTable({
   const [selectedStandard, setSelectedStandard] = useState("s1");
 
   const standardsList = [
-    { id: "s1", name: "มาตรฐานที่ 1 คุณภาพของผู้เรียน" },
-    { id: "s2", name: "มาตรฐานที่ 2 กระบวนการบริหารและการจัดการ" },
-    { id: "s3", name: "มาตรฐานที่ 3 กระบวนการจัดการเรียนการสอนที่เน้นผู้เรียนเป็นสำคัญ" },
+    { id: "s1", name: "มาตรฐานที่ ๑ ผลลัพธ์ของการเรียนรู้" },
+    { id: "s2", name: "มาตรฐานที่ ๒ การพัฒนาคุณภาพการบริหารจัดการสถานศึกษา" },
+    { id: "s3", name: "มาตรฐานที่ ๓ การพัฒนาคุณภาพการจัดการเรียนรู้" },
   ];
 
   const filtered = indicators.filter((item) => {
