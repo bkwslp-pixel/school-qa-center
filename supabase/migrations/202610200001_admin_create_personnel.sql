@@ -31,6 +31,11 @@ EXCEPTION WHEN OTHERS THEN
   NULL;
 END $$;
 
+-- Clean up any previous signatures to avoid 42725 ambiguity error
+DROP FUNCTION IF EXISTS public.admin_create_personnel(text, text, text, text, text, text, uuid);
+DROP FUNCTION IF EXISTS public.admin_create_personnel(text, text, text, text, text, text, text);
+DROP FUNCTION IF EXISTS public.admin_create_personnel;
+
 CREATE OR REPLACE FUNCTION public.admin_create_personnel(
     p_email text,
     p_password text,
@@ -206,5 +211,5 @@ BEGIN
 END;
 $$;
 
--- Grant execution permission
-GRANT EXECUTE ON FUNCTION public.admin_create_personnel TO anon, authenticated, service_role;
+-- Grant execution permission unambiguously
+GRANT EXECUTE ON FUNCTION public.admin_create_personnel(text, text, text, text, text, text, text) TO anon, authenticated, service_role;
