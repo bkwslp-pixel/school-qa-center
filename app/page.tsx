@@ -292,7 +292,15 @@ export default function DashboardPage() {
     const { error } = await client.auth.signInWithPassword({ email, password });
     setAuthBusy(false);
     if (error) {
-      setAuthMessage("เข้าสู่ระบบไม่สำเร็จ: " + error.message);
+      let friendlyMsg = error.message;
+      if (error.message.includes("Invalid login credentials")) {
+        friendlyMsg = "อีเมลหรือรหัสผ่านไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง";
+      } else if (error.message.includes("Email not confirmed")) {
+        friendlyMsg = "อีเมลนี้ยังไม่ได้รับการยืนยัน กรุณาติดต่อผู้ดูแลระบบ";
+      } else if (error.message.includes("Too many requests")) {
+        friendlyMsg = "คุณพยายามเข้าสู่ระบบถี่เกินไป กรุณารอสักครู่แล้วลองใหม่อีกครั้ง";
+      }
+      setAuthMessage("เข้าสู่ระบบไม่สำเร็จ: " + friendlyMsg);
     } else {
       setShowLogin(false);
       setPassword("");

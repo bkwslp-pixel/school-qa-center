@@ -71,14 +71,14 @@ export function LoginModal({
 
         <form onSubmit={onSignIn}>
           <label>
-            อีเมลสำหรับใช้งาน
+            อีเมลสำหรับใช้งาน (@gmail.com)
             <input
               type="email"
               autoComplete="username"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="user@banklang.ac.th"
+              placeholder="เช่น somchai@gmail.com"
             />
           </label>
 

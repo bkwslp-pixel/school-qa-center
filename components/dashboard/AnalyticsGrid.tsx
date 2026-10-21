@@ -111,7 +111,7 @@ export function AnalyticsGrid({ totalIndicators, evaluationsSummary }: Analytics
                 </Pie>
                 <Tooltip
                   formatter={(val: unknown) => [
-                    `${val} ตัวชี้วัด (${((Number(val) / currentTotal) * 100).toFixed(1)}%)`,
+                    `${val} ตัวชี้วัด (${currentTotal > 0 ? ((Number(val) / currentTotal) * 100).toFixed(1) : "0.0"}%)`,
                     "จำนวน",
                   ]}
                 />
@@ -129,7 +129,7 @@ export function AnalyticsGrid({ totalIndicators, evaluationsSummary }: Analytics
                 <span className="legend-dot" style={{ background: item.color }} />
                 <span>{item.name}</span>
                 <b>
-                  {item.value} ({((item.value / currentTotal) * 100).toFixed(1)}%)
+                  {item.value} ({currentTotal > 0 ? ((item.value / currentTotal) * 100).toFixed(1) : "0.0"}%)
                 </b>
               </div>
             ))}
