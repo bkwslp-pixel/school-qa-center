@@ -106,6 +106,18 @@ export async function POST(req: Request) {
       );
 
       if (rpcErr) {
+        if (
+          rpcErr.message.includes("admin_create_personnel") ||
+          rpcErr.message.includes("schema cache")
+        ) {
+          return NextResponse.json(
+            {
+              error:
+                "ยังไม่ได้ติดตั้งฟังก์ชันสร้างผู้ใช้ใน Supabase หรือยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY ใน Vercel\n\nวิธีแก้ไขที่แนะนำ:\n1. ไปที่ Supabase Project Settings -> API แล้วคัดลอก service_role secret key\n2. ไปที่ Vercel Settings -> Environment Variables แล้วเพิ่ม SUPABASE_SERVICE_ROLE_KEY\n3. หรือนำคำสั่ง SQL จากไฟล์ 202610200001_admin_create_personnel.sql ไปรันใน Supabase SQL Editor",
+            },
+            { status: 400 }
+          );
+        }
         return NextResponse.json(
           { error: rpcErr.message },
           { status: 400 }
