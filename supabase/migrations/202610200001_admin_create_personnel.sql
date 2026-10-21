@@ -8,7 +8,7 @@ CREATE OR REPLACE FUNCTION public.admin_create_personnel(
     p_position text DEFAULT 'ครูผู้สอน',
     p_department text DEFAULT 'กลุ่มสาระการเรียนรู้',
     p_role text DEFAULT 'teacher',
-    p_school_id uuid DEFAULT NULL
+    p_school_id text DEFAULT NULL
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -18,6 +18,7 @@ AS $$
 DECLARE
     new_user_id uuid;
     clean_email text;
+    valid_school_uuid uuid := NULL;
 BEGIN
     clean_email := lower(trim(p_email));
 
@@ -31,6 +32,18 @@ BEGIN
 
     IF EXISTS (SELECT 1 FROM auth.users WHERE email = clean_email) THEN
         RETURN json_build_object('success', false, 'error', 'อีเมล ' || clean_email || ' นี้มีอยู่ในระบบแล้ว');
+    END IF;
+
+    -- Safely convert p_school_id to UUID if valid
+    IF p_school_id IS NOT NULL AND p_school_id ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
+        IF EXISTS (SELECT 1 FROM public.schools WHERE id = p_school_id::uuid) THEN
+            valid_school_uuid := p_school_id::uuid;
+        END IF;
+    END IF;
+
+    -- If no valid school_id passed or found, look up the existing school in schools table
+    IF valid_school_uuid IS NULL THEN
+        SELECT id INTO valid_school_uuid FROM public.schools LIMIT 1;
     END IF;
 
     new_user_id := gen_random_uuid();
@@ -127,7 +140,7 @@ BEGIN
         p_full_name,
         COALESCE(p_position, 'ครูผู้สอน'),
         COALESCE(p_department, 'กลุ่มสาระการเรียนรู้'),
-        p_school_id
+        valid_school_uuid
     )
     ON CONFLICT (id) DO UPDATE SET
         full_name = EXCLUDED.full_name,
@@ -136,14 +149,14 @@ BEGIN
         school_id = EXCLUDED.school_id;
 
     -- 4. Upsert user_roles
-    IF p_school_id IS NOT NULL THEN
+    IF valid_school_uuid IS NOT NULL THEN
         INSERT INTO public.user_roles (
             user_id,
             school_id,
             role
         ) VALUES (
             new_user_id,
-            p_school_id,
+            valid_school_uuid,
             COALESCE(p_role, 'teacher')
         )
         ON CONFLICT (user_id, school_id, role) DO NOTHING;

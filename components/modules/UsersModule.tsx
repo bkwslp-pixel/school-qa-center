@@ -295,7 +295,10 @@ export function UsersModule({
             position: finalPosition,
             department: finalDepartment,
             role: inviteRole,
-            schoolId: school?.id || null,
+            schoolId:
+              school?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(school.id)
+                ? school.id
+                : null,
           }),
         });
 

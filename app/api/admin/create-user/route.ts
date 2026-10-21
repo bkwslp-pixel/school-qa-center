@@ -39,6 +39,35 @@ export async function POST(req: Request) {
       );
     }
 
+    // Validate and sanitize schoolId (avoid invalid input syntax for type uuid like "sch-1")
+    const isValidUuid = (val?: string | null) =>
+      Boolean(val && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val));
+
+    let safeSchoolId: string | null = isValidUuid(schoolId) ? schoolId : null;
+
+    // Auto-detect real school UUID if not provided or invalid
+    if (!safeSchoolId) {
+      try {
+        const queryClient = serviceRoleKey
+          ? createClient(supabaseUrl, serviceRoleKey)
+          : anonKey
+          ? createClient(supabaseUrl, anonKey)
+          : null;
+        if (queryClient) {
+          const { data: schoolRow } = await queryClient
+            .from("schools")
+            .select("id")
+            .limit(1)
+            .maybeSingle();
+          if (schoolRow?.id && isValidUuid(schoolRow.id)) {
+            safeSchoolId = schoolRow.id;
+          }
+        }
+      } catch (err) {
+        console.warn("Auto-detect school UUID skipped:", err);
+      }
+    }
+
     // 1. If service role key is available, use Supabase Auth Admin API
     if (serviceRoleKey) {
       const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
@@ -68,15 +97,15 @@ export async function POST(req: Request) {
         full_name: fullName.trim(),
         position: position.trim() || "ครูผู้สอน",
         department: department.trim() || "กลุ่มงานวิชาการ",
-        school_id: schoolId || null,
+        school_id: safeSchoolId,
       });
 
       // Upsert user_role
-      if (schoolId) {
+      if (safeSchoolId) {
         await supabaseAdmin.from("user_roles").upsert(
           {
             user_id: newUserId,
-            school_id: schoolId,
+            school_id: safeSchoolId,
             role,
           },
           { onConflict: "user_id,school_id,role" }
@@ -101,7 +130,7 @@ export async function POST(req: Request) {
           p_position: position.trim() || "ครูผู้สอน",
           p_department: department.trim() || "กลุ่มงานวิชาการ",
           p_role: role,
-          p_school_id: schoolId || null,
+          p_school_id: safeSchoolId,
         }
       );
 
