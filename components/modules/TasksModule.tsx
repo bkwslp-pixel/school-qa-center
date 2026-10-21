@@ -50,7 +50,7 @@ export function TasksModule({
   indicators,
   onTasksChange,
 }: TasksModuleProps) {
-  const { showToast, showConfirm } = useNotification();
+  const { showToast, showConfirm, showAlert } = useNotification();
   const sb = client ?? getSupabase();
 
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
@@ -226,6 +226,14 @@ export function TasksModule({
         setStatusMessage({ text: "สร้างภารกิจงานประกันคุณภาพใหม่เรียบร้อยแล้ว", type: "success" });
         showToast(`สร้างภารกิจงาน "${newTitle.trim()}" สำเร็จ`, "success", "บันทึกสำเร็จ");
         await fetchTasks();
+
+        showAlert({
+          title: "สร้างภารกิจงานประกันคุณภาพสำเร็จ!",
+          message: `มอบหมายภารกิจ: "${newTitle.trim()}"\nผู้รับผิดชอบ: ${newAssignee || "ไม่ระบุ"}\nกำหนดส่ง: ${dueTimestamp ? new Date(dueTimestamp).toLocaleDateString("th-TH") : "ไม่ระบุ"}`,
+          type: "success",
+          nextStep: "สิ่งที่ควรทำต่อไป:\n1. ผู้รับผิดชอบจะเห็นงานนี้ในหน้าแดชบอร์ดและรายการงานของตนเอง\n2. เมื่อทำงานเสร็จสามารถกดทำเครื่องหมายสำเร็จ หรือแนบเอกสารหลักฐานเชื่อมโยงได้ทันที",
+          buttonText: "เข้าใจแล้ว / ดำเนินการต่อ",
+        });
       } else {
         const newTask: Task = {
           id: "task-" + Date.now(),
@@ -239,6 +247,14 @@ export function TasksModule({
         setTasks([newTask, ...tasks]);
         setStatusMessage({ text: "เพิ่มงานตัวอย่างเรียบร้อย (Mock mode)", type: "success" });
         showToast("เพิ่มงานตัวอย่างเรียบร้อย (Mock mode)", "success", "บันทึกสำเร็จ");
+
+        showAlert({
+          title: "เพิ่มงานตัวอย่างเรียบร้อย (Mock mode)",
+          message: `ภารกิจ: "${newTitle.trim()}"`,
+          type: "info",
+          nextStep: "สามารถเชื่อมต่อ Supabase Database เพื่อจัดเก็บบันทึกงานจริงและแจ้งเตือนไปยังผู้รับผิดชอบ",
+          buttonText: "รับทราบ",
+        });
       }
 
       if (onTasksChange) onTasksChange();
@@ -252,6 +268,14 @@ export function TasksModule({
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการสร้างงาน";
       setStatusMessage({ text: msg, type: "error" });
       showToast(msg, "error", "สร้างงานไม่สำเร็จ");
+
+      showAlert({
+        title: "ไม่สามารถสร้างภารกิจงานได้",
+        message: `สาเหตุ: ${msg}`,
+        type: "error",
+        nextStep: "กรุณาตรวจสอบชื่อภารกิจและวันที่กำหนดส่งให้ถูกต้อง หรือตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองใหม่อีกครั้ง",
+        buttonText: "เข้าใจแล้ว",
+      });
     } finally {
       setLoading(false);
       setTimeout(() => setStatusMessage(null), 5000);

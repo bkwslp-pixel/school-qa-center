@@ -79,7 +79,7 @@ export function EvaluationsModule({
   academicYear = "2567",
   onNavigateToEvidence,
 }: EvaluationsModuleProps) {
-  const { showToast, showConfirm } = useNotification();
+  const { showToast, showConfirm, showAlert } = useNotification();
   const sb = client ?? getSupabase();
 
   // Framework Level Tab: "early" (18 indicators) vs "basic" (16 indicators)
@@ -309,11 +309,37 @@ export function EvaluationsModule({
 
       setStatusMessage({ text: successText, type: "success" });
       showToast(successText, "success", "บันทึกเรียบร้อย");
+
+      if (targetStatus === "submitted") {
+        showAlert({
+          title: `ส่งผลการประเมิน ${currentStandard.code} สำเร็จ!`,
+          message: `บันทึกและส่งผลการประเมินตนเองตามมาตรฐาน "${currentStandard.title}" เข้าสู่ระบบเรียบร้อยแล้ว`,
+          type: "success",
+          nextStep: `สิ่งที่ควรทำต่อไป:\n1. ตรวจสอบคะแนนเฉลี่ยและระดับคุณภาพที่แท็บ "สรุปภาพรวม"\n2. สามารถไปที่เมนู "เอกสารและรายงาน SAR" เพื่อส่งออกไฟล์รายงานสรุปของโรงเรียนได้ทันที`,
+          buttonText: "เข้าใจแล้ว / ดำเนินการต่อ",
+        });
+      } else {
+        showAlert({
+          title: `บันทึกแบบร่าง ${currentStandard.code} สำเร็จ`,
+          message: `ระบบบันทึกแบบร่างคะแนนและข้อคิดเห็นของมาตรฐาน "${currentStandard.title}" ไว้แล้ว`,
+          type: "info",
+          nextStep: "ท่านสามารถกลับมาแก้ไขเพิ่มเติมคะแนน หรือแนบหลักฐานประกอบเพิ่มเติมได้ตลอดเวลาก่อนกดส่งผลประเมินจริง",
+          buttonText: "รับทราบ",
+        });
+      }
     } catch (err: unknown) {
       console.error("Save evaluations error:", err);
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการบันทึก";
       setStatusMessage({ text: msg, type: "error" });
       showToast(msg, "error", "บันทึกไม่สำเร็จ");
+
+      showAlert({
+        title: "ไม่สามารถบันทึกผลการประเมินได้",
+        message: `สาเหตุ: ${msg}`,
+        type: "error",
+        nextStep: "กรุณาตรวจสอบสิทธิ์การเข้าใช้งาน หรือตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองบันทึกใหม่อีกครั้ง",
+        buttonText: "เข้าใจแล้ว",
+      });
     } finally {
       setSaving(false);
       setTimeout(() => setStatusMessage(null), 5000);

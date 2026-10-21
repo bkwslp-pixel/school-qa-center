@@ -309,6 +309,14 @@ interface EvidenceDbRow {
         setStatusMessage({ text: "อัปโหลดและบันทึกหลักฐานเข้าระบบเรียบร้อยแล้ว", type: "success" });
         showToast("อัปโหลดและเชื่อมโยงหลักฐานเข้าระบบสำเร็จ", "success", "บันทึกเรียบร้อย");
         await fetchEvidence();
+
+        showAlert({
+          title: "อัปโหลดและแนบหลักฐานสำเร็จ!",
+          message: `บันทึกรายการ "${newTitle.trim()}" และเชื่อมโยงเข้าสู่ตัวชี้วัด ${newIndicatorCode} เรียบร้อยแล้ว`,
+          type: "success",
+          nextStep: `สิ่งที่ควรทำต่อไป:\n1. ไปที่เมนู "การประเมินตนเอง (SAR)" เพื่อตรวจสอบเกณฑ์และบันทึกผลการประเมินตามตัวชี้วัด ${newIndicatorCode}\n2. หลักฐานชิ้นนี้จะปรากฏในรายงาน SAR และ Audit Trail โดยอัตโนมัติ`,
+          buttonText: "เข้าใจแล้ว / ดำเนินการต่อ",
+        });
       } else {
         // Fallback for local demo preview
         const fallbackItem: EvidenceRecord = {
@@ -328,6 +336,14 @@ interface EvidenceDbRow {
         setEvidenceList((prev) => [fallbackItem, ...prev]);
         setStatusMessage({ text: "บันทึกตัวอย่างหลักฐานเรียบร้อย (Mock mode)", type: "success" });
         showToast("บันทึกตัวอย่างหลักฐานเรียบร้อย (Mock mode)", "success", "บันทึกเรียบร้อย");
+
+        showAlert({
+          title: "บันทึกตัวอย่างหลักฐานเรียบร้อย (Mock mode)",
+          message: `รายการ: "${newTitle.trim()}" สำหรับตัวชี้วัด ${newIndicatorCode}`,
+          type: "info",
+          nextStep: "สามารถเชื่อมต่อ Supabase Database เพื่อจัดเก็บไฟล์จริงลงบนระบบ Cloud Storage",
+          buttonText: "รับทราบ",
+        });
       }
 
       // Reset form
@@ -342,6 +358,14 @@ interface EvidenceDbRow {
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการอัปโหลด";
       setStatusMessage({ text: msg, type: "error" });
       showToast(msg, "error", "อัปโหลดไม่สำเร็จ");
+
+      showAlert({
+        title: "ไม่สามารถอัปโหลดหลักฐานได้",
+        message: `สาเหตุ: ${msg}`,
+        type: "error",
+        nextStep: "กรุณาตรวจสอบขนาดไฟล์ (แนะนำไม่เกิน 25MB) หรือตรวจสอบประเภทไฟล์ หรือตรวจสอบสัญญาณอินเทอร์เน็ตแล้วลองใหม่อีกครั้ง",
+        buttonText: "เข้าใจแล้ว",
+      });
     } finally {
       setUploading(false);
       setTimeout(() => setStatusMessage(null), 6000);

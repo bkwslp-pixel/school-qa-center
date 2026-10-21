@@ -13,10 +13,17 @@ import {
   Check,
   Eye,
   EyeOff,
+  Link2,
+  Share2,
+  Send,
+  Key,
+  ExternalLink,
+  Info,
 } from "lucide-react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
 import type { Profile, UserRoleType, School } from "@/types/database";
+import { useNotification } from "@/components/ui/NotificationProvider";
 
 interface UsersModuleProps {
   client?: SupabaseClient | null;
@@ -62,6 +69,7 @@ export function UsersModule({
   currentUserRole,
   school,
 }: UsersModuleProps) {
+  const { showToast, showAlert } = useNotification();
   const sb = client ?? getSupabase();
 
   const [userList, setUserList] = useState<Profile[]>([]);
@@ -87,6 +95,69 @@ export function UsersModule({
   const [copied, setCopied] = useState(false);
   const [alertMsg, setAlertMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [busy, setBusy] = useState(false);
+
+  // Dynamic Site URL detection
+  const getSiteUrl = useCallback(() => {
+    if (typeof window !== "undefined" && window.location.origin) {
+      return window.location.origin;
+    }
+    return "https://school-qa-center.vercel.app";
+  }, []);
+
+  const getRoleLabel = useCallback((role?: UserRoleType) => {
+    switch (role) {
+      case "admin":
+        return "ผู้ดูแลระบบ (Admin)";
+      case "school_leadership":
+        return "ผู้บริหารสถานศึกษา";
+      case "external_evaluator":
+        return "ผู้ตรวจประเมินภายนอก";
+      default:
+        return "ครูผู้รับผิดชอบตัวชี้วัด";
+    }
+  }, []);
+
+  // Quick Action: Copy live system link
+  const handleCopySystemLink = () => {
+    const url = getSiteUrl();
+    navigator.clipboard.writeText(url);
+    showToast(`คัดลอกลิงก์ระบบเรียบร้อย: ${url}`, "success", "คัดลอกสำเร็จ");
+  };
+
+  // Quick Action: Copy message template for LINE group
+  const handleCopyGeneralTemplate = () => {
+    const siteUrl = getSiteUrl();
+    const template = `📢 แจ้งบุคลากรโรงเรียนเทศบาล ๑ บ้านกลาง\nขอเชิญเข้าใช้งานระบบประกันคุณภาพการศึกษา (School QA Center)\n\n🌐 ลิงก์เข้าสู่ระบบ:\n${siteUrl}\n\n👤 ชื่อผู้ใช้: อีเมล Gmail ของคุณครูที่แจ้งไว้กับฝ่ายประกันคุณภาพ\n🔑 รหัสผ่านเริ่มต้น: Bkwslp@2026\n\n📌 สิ่งที่ต้องดำเนินการ:\n1. เข้าสู่ระบบตามลิงก์ด้านบน\n2. ตรวจสอบตัวชี้วัดประกันคุณภาพที่ท่านรับผิดชอบ\n3. แนบไฟล์หลักฐาน หรือกรอกผลการประเมินตนเอง (SAR) ตามกำหนดเวลา\n\nหากติดปัญหาการเข้าใช้งาน สามารถติดต่อผู้ดูแลระบบได้ทันทีครับ/ค่ะ`;
+    navigator.clipboard.writeText(template);
+    showToast("คัดลอกข้อความแม่แบบสำหรับส่งเข้ากลุ่ม LINE เรียบร้อยแล้ว", "success", "คัดลอกสำเร็จ");
+  };
+
+  // Copy individual login instructions for a specific user
+  const handleCopyUserLoginInfo = (u: Profile) => {
+    const siteUrl = getSiteUrl();
+    const defaultPass = "Bkwslp@2026";
+    const message = `🏫 ข้อมูลเข้าใช้งานระบบประกันคุณภาพ School QA Center (รร.เทศบาล ๑ บ้านกลาง)\n\n👤 ชื่อ-สกุล: ${u.full_name}\n💼 ตำแหน่ง: ${u.position || "ครูผู้สอน"}\n🏢 ฝ่าย/กลุ่มงาน: ${u.department || "กลุ่มบริหารงานวิชาการ"}\n🔑 รหัสผ่านเริ่มต้น: ${defaultPass}\n🏷️ สิทธิ์ในระบบ: ${getRoleLabel(u.role)}\n\n🌐 ลิงก์เข้าสู่ระบบ:\n${siteUrl}\n\n📌 ขั้นตอนการใช้งาน:\n1. เปิดลิงก์ด้านบนผ่านเว็บเบราว์เซอร์ (มือถือหรือคอมพิวเตอร์)\n2. เข้าสู่ระบบด้วยอีเมล Gmail ของท่าน และรหัสผ่าน ${defaultPass}\n3. เข้าตรวจเช็คและแนบหลักฐานประกันคุณภาพตามตัวชี้วัดที่ได้รับมอบหมาย`;
+
+    navigator.clipboard.writeText(message);
+    showToast(`คัดลอกข้อมูลส่งต่อสำหรับ "${u.full_name}" สำเร็จ`, "success", "คัดลอกสำเร็จ");
+  };
+
+  // Open modal popup showing individual user login details
+  const handleShowUserLoginModal = (u: Profile) => {
+    const siteUrl = getSiteUrl();
+    const defaultPass = "Bkwslp@2026";
+    const message = `🏫 ข้อมูลเข้าใช้งานระบบประกันคุณภาพ School QA Center (รร.เทศบาล ๑ บ้านกลาง)\n\n👤 ชื่อ-สกุล: ${u.full_name}\n💼 ตำแหน่ง: ${u.position || "ครูผู้สอน"}\n🏢 ฝ่าย/กลุ่มงาน: ${u.department || "กลุ่มบริหารงานวิชาการ"}\n🔑 รหัสผ่านเริ่มต้น: ${defaultPass}\n🏷️ สิทธิ์ในระบบ: ${getRoleLabel(u.role)}\n\n🌐 ลิงก์เข้าสู่ระบบ:\n${siteUrl}\n\n📌 ขั้นตอนการใช้งาน:\n1. เปิดลิงก์ด้านบนผ่านเว็บเบราว์เซอร์\n2. เข้าสู่ระบบด้วยอีเมล Gmail ของท่าน และรหัสผ่าน ${defaultPass}\n3. เข้าตรวจเช็คและแนบหลักฐานประกันคุณภาพตามตัวชี้วัดที่ได้รับมอบหมาย`;
+
+    showAlert({
+      title: `ข้อมูลการเข้าสู่ระบบ: ${u.full_name}`,
+      message: `ตำแหน่ง: ${u.position || "-"}\nฝ่ายงาน: ${u.department || "-"}\nบทบาท: ${getRoleLabel(u.role)}\nรหัสผ่านเริ่มต้น: ${defaultPass}\nลิงก์เข้าสู่ระบบ: ${siteUrl}`,
+      type: "info",
+      nextStep: "สามารถกดปุ่ม 'คัดลอกข้อความสำหรับส่งให้ครูท่านนี้' ด้านล่าง เพื่อนำไปส่งทางแชท LINE หรืออีเมลให้คุณครูท่านนี้ได้ทันที",
+      copyData: message,
+      copyButtonText: "📋 คัดลอกข้อความสำหรับส่งให้ครูท่านนี้",
+      buttonText: "ปิดหน้าต่าง",
+    });
+  };
 
   // Fetch users from Supabase
   const fetchUsers = useCallback(async () => {
@@ -149,15 +220,30 @@ export function UsersModule({
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inviteName.trim()) {
-      setAlertMsg({ text: "กรุณาระบุชื่อ - สกุล บุคลากร", type: "error" });
+      showAlert({
+        title: "กรอกข้อมูลไม่ครบถ้วน",
+        message: "กรุณาระบุชื่อ - สกุล ของบุคลากร",
+        type: "warning",
+        buttonText: "เข้าใจแล้ว",
+      });
       return;
     }
-    if (!inviteEmail.trim()) {
-      setAlertMsg({ text: "กรุณาระบุอีเมลสำหรับเข้าสู่ระบบ", type: "error" });
+    if (!inviteEmail.trim() || !inviteEmail.includes("@")) {
+      showAlert({
+        title: "รูปแบบอีเมลไม่ถูกต้อง",
+        message: "กรุณาระบุอีเมลสำหรับเข้าสู่ระบบ (เช่น example@gmail.com)",
+        type: "warning",
+        buttonText: "เข้าใจแล้ว",
+      });
       return;
     }
     if (invitePassword.length < 6) {
-      setAlertMsg({ text: "รหัสผ่านเริ่มต้นต้องมีความยาวอย่างน้อย 6 ตัวอักษร", type: "error" });
+      showAlert({
+        title: "รหัสผ่านสั้นเกินไป",
+        message: "รหัสผ่านเริ่มต้นต้องมีความยาวอย่างน้อย 6 ตัวอักษร",
+        type: "warning",
+        buttonText: "เข้าใจแล้ว",
+      });
       return;
     }
 
@@ -167,7 +253,12 @@ export function UsersModule({
         : selectedPositionOption;
 
     if (!finalPosition) {
-      setAlertMsg({ text: "กรุณาระบุตำแหน่งของบุคลากร", type: "error" });
+      showAlert({
+        title: "กรอกข้อมูลไม่ครบถ้วน",
+        message: "กรุณาระบุตำแหน่งของบุคลากร",
+        type: "warning",
+        buttonText: "เข้าใจแล้ว",
+      });
       return;
     }
 
@@ -177,12 +268,20 @@ export function UsersModule({
         : selectedDepartmentOption;
 
     if (!finalDepartment) {
-      setAlertMsg({ text: "กรุณาระบุกลุ่มงานหรือฝ่ายของบุคลากร", type: "error" });
+      showAlert({
+        title: "กรอกข้อมูลไม่ครบถ้วน",
+        message: "กรุณาระบุกลุ่มงานหรือฝ่ายของบุคลากร",
+        type: "warning",
+        buttonText: "เข้าใจแล้ว",
+      });
       return;
     }
 
     setBusy(true);
     setAlertMsg(null);
+
+    const siteUrl = getSiteUrl();
+    const fullShareText = `🏫 ข้อมูลเข้าใช้งานระบบ School QA Center (รร.เทศบาล ๑ บ้านกลาง)\n\n👤 ชื่อ-สกุล: ${inviteName.trim()}\n📧 อีเมลเข้าสู่ระบบ: ${inviteEmail.trim()}\n🔑 รหัสผ่านเริ่มต้น: ${invitePassword.trim()}\n🏷️ สิทธิ์ในระบบ: ${getRoleLabel(inviteRole)}\n\n🌐 ลิงก์เข้าสู่ระบบ:\n${siteUrl}\n\n📌 ขั้นตอนการเข้าใช้งาน:\n1. เปิดลิงก์ ${siteUrl} ผ่านเว็บเบราว์เซอร์\n2. กรอกอีเมล (${inviteEmail.trim()}) และรหัสผ่านเริ่มต้น (${invitePassword.trim()})\n3. กดปุ่ม "เข้าสู่ระบบ" เพื่อตรวจสอบภารกิจและอัปโหลดหลักฐานประกันคุณภาพ`;
 
     try {
       if (sb) {
@@ -213,10 +312,19 @@ export function UsersModule({
         });
 
         await fetchUsers();
-        setAlertMsg({
-          text: `สร้างบัญชีและเพิ่มข้อมูลบุคลากร "${inviteName}" สำเร็จ! สามารถใช้อีเมลและรหัสผ่านเข้าสู่ระบบได้ทันที`,
+
+        // Show Rich Alert Modal with Next Steps & Copy Button
+        showAlert({
+          title: "สร้างบัญชีและเพิ่มบุคลากรสำเร็จ!",
+          message: `ระบบได้ลงทะเบียนบัญชีให้กับ "${inviteName.trim()}" เรียบร้อยแล้ว\nอีเมลเข้าสู่ระบบ: ${inviteEmail.trim()}\nรหัสผ่านเริ่มต้น: ${invitePassword.trim()}`,
           type: "success",
+          nextStep: `แนวทางการดำเนินงานต่อไป:\n1. กดปุ่ม "คัดลอกข้อมูลและลิงก์ส่งให้ครู" ด้านล่าง\n2. ส่งข้อความนี้ให้คุณครูผ่านช่องทาง LINE (กลุ่มงานหรือแชทส่วนตัว)\n3. แนะนำให้คุณครูลองกดเข้าลิงก์ ${siteUrl} และเข้าสู่ระบบเพื่อตรวจสอบตัวชี้วัดที่ได้รับมอบหมาย`,
+          copyData: fullShareText,
+          copyButtonText: "📋 คัดลอกข้อมูลและลิงก์ส่งให้ครูทันที",
+          buttonText: "เสร็จสิ้น",
         });
+
+        showToast(`สร้างบัญชีบุคลากร "${inviteName}" สำเร็จ!`, "success", "สร้างสำเร็จ");
       } else {
         const newUser: Profile = {
           id: "usr-" + Date.now(),
@@ -232,9 +340,15 @@ export function UsersModule({
           pass: invitePassword.trim(),
           role: getRoleLabel(inviteRole),
         });
-        setAlertMsg({
-          text: `จำลองการเพิ่มข้อมูลบุคลากร "${inviteName}" เรียบร้อย (Mock mode)`,
+
+        showAlert({
+          title: "จำลองการเพิ่มข้อมูลบุคลากรเรียบร้อย (Mock mode)",
+          message: `ชื่อ-สกุล: ${inviteName.trim()}\nอีเมล: ${inviteEmail.trim()}\nรหัสผ่านเริ่มต้น: ${invitePassword.trim()}`,
           type: "success",
+          nextStep: "ท่านสามารถคัดลอกข้อความด้านล่างเพื่อทดลองนำไปส่งต่อได้",
+          copyData: fullShareText,
+          copyButtonText: "📋 คัดลอกข้อความและลิงก์ส่งต่อ",
+          buttonText: "เข้าใจแล้ว",
         });
       }
 
@@ -249,23 +363,15 @@ export function UsersModule({
     } catch (err: unknown) {
       console.error("Invite user error:", err);
       const msg = err instanceof Error ? err.message : "เกิดข้อผิดพลาดในการบันทึก";
-      setAlertMsg({ text: msg, type: "error" });
+      showAlert({
+        title: "เกิดข้อผิดพลาดในการสร้างบัญชี",
+        message: `ไม่สามารถสร้างบัญชีได้: ${msg}`,
+        type: "error",
+        nextStep: "กรุณาตรวจสอบว่าอีเมล Gmail ถูกต้องหรือไม่ และไม่ได้ซ้ำกับบัญชีที่มีอยู่เดิมในระบบ หรือตรวจสอบสิทธิ์ของผู้ดูแลระบบ (Admin)",
+        buttonText: "รับทราบและแก้ไขข้อมูล",
+      });
     } finally {
       setBusy(false);
-      setTimeout(() => setAlertMsg(null), 8000);
-    }
-  };
-
-  const getRoleLabel = (role?: UserRoleType) => {
-    switch (role) {
-      case "admin":
-        return "ผู้ดูแลระบบ (Admin)";
-      case "school_leadership":
-        return "ผู้บริหารสถานศึกษา";
-      case "external_evaluator":
-        return "ผู้ตรวจประเมินภายนอก";
-      default:
-        return "ครูผู้รับผิดชอบตัวชี้วัด";
     }
   };
 
@@ -306,6 +412,218 @@ export function UsersModule({
           <button className="primary-button" onClick={() => setShowInviteModal(true)} style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <UserPlus size={16} /> เพิ่ม / เชิญผู้ใช้งานใหม่
           </button>
+        </div>
+      </div>
+
+      {/* Quick Sharing & Guidance Card */}
+      <div
+        className="panel"
+        style={{
+          background: "#ffffff",
+          border: "1px solid #bfdbfe",
+          borderRadius: 14,
+          padding: "18px 20px",
+          boxShadow: "0 4px 16px rgba(37, 99, 235, 0.06)",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#eff6ff",
+                color: "#2563eb",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Share2 size={20} />
+            </div>
+            <div>
+              <h3 style={{ margin: 0, fontSize: 15, color: "#0f2e54", fontWeight: 700 }}>
+                ข้อมูลและลิงก์สำหรับส่งต่อให้บุคลากรเข้าใช้งาน (Personnel Login Access)
+              </h3>
+              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#64748b" }}>
+                คัดลอกลิงก์เว็บไซต์และรหัสผ่านเริ่มต้นเพื่อส่งต่อให้ครูผู้สอนทาง LINE หรืออีเมล
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              className="primary-button"
+              style={{
+                background: "#2563eb",
+                fontSize: 12,
+                padding: "8px 14px",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+              onClick={handleCopyGeneralTemplate}
+            >
+              <Send size={14} /> คัดลอกข้อความแม่แบบส่งกลุ่ม LINE
+            </button>
+          </div>
+        </div>
+
+        {/* Quick URL & Password display */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+            gap: 12,
+            background: "#f8fafc",
+            padding: 14,
+            borderRadius: 10,
+            border: "1px solid #e2e8f0",
+            marginBottom: 14,
+          }}
+        >
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <Link2 size={14} color="#2563eb" />
+              <span>ลิงก์ระบบ QA (สำหรับให้ครูคลิกเข้าใช้งาน):</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="text"
+                readOnly
+                value={getSiteUrl()}
+                style={{
+                  flex: 1,
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 6,
+                  padding: "6px 10px",
+                  fontSize: 12,
+                  fontFamily: "monospace",
+                  color: "#0f172a",
+                }}
+              />
+              <button
+                type="button"
+                onClick={handleCopySystemLink}
+                style={{
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  color: "#1d4ed8",
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Copy size={13} /> คัดลอกลิงก์
+              </button>
+              <a
+                href={getSiteUrl()}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  background: "#f1f5f9",
+                  border: "1px solid #cbd5e1",
+                  color: "#475569",
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  textDecoration: "none",
+                }}
+                title="เปิดหน้าเว็บในแท็บใหม่"
+              >
+                <ExternalLink size={13} />
+              </a>
+            </div>
+          </div>
+
+          <div>
+            <div style={{ fontSize: 12, fontWeight: 600, color: "#475569", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <Key size={14} color="#f59e0b" />
+              <span>รหัสผ่านเริ่มต้นของบุคลากร (Default Password):</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="text"
+                readOnly
+                value="Bkwslp@2026"
+                style={{
+                  flex: 1,
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 6,
+                  padding: "6px 10px",
+                  fontSize: 12,
+                  fontFamily: "monospace",
+                  fontWeight: 700,
+                  color: "#0f172a",
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText("Bkwslp@2026");
+                  showToast("คัดลอกรหัสผ่านเริ่มต้นเรียบร้อย (Bkwslp@2026)", "success", "คัดลอกสำเร็จ");
+                }}
+                style={{
+                  background: "#fef3c7",
+                  border: "1px solid #fde68a",
+                  color: "#b45309",
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  whiteSpace: "nowrap",
+                }}
+              >
+                <Copy size={13} /> คัดลอกรหัสผ่าน
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 3 Steps guidance */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 10,
+            fontSize: 12,
+            color: "#475569",
+          }}
+        >
+          <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "10px 12px", borderRadius: 8 }}>
+            <strong style={{ color: "#166534", display: "block", marginBottom: 2 }}>
+              1. เพิ่มบัญชีด้วย @gmail ของครู
+            </strong>
+            กดปุ่ม &quot;เพิ่ม / เชิญผู้ใช้งานใหม่&quot; ด้านบน กรอกชื่อและอีเมล Gmail ของคุณครู
+          </div>
+          <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", padding: "10px 12px", borderRadius: 8 }}>
+            <strong style={{ color: "#1e40af", display: "block", marginBottom: 2 }}>
+              2. ก๊อปลิงก์ & รหัสผ่านส่งให้ครู
+            </strong>
+            กดปุ่ม &quot;คัดลอกส่งครู&quot; ที่แถวรายชื่อบุคลากร แล้วส่งทาง LINE หรืออีเมล
+          </div>
+          <div style={{ background: "#fdf4ff", border: "1px solid #f0abfc", padding: "10px 12px", borderRadius: 8 }}>
+            <strong style={{ color: "#86198f", display: "block", marginBottom: 2 }}>
+              3. ครูล็อกอินและเริ่มทำงาน QA
+            </strong>
+            ครูเข้าใช้งานเพื่อตรวจสอบตัวชี้วัด แนบหลักฐาน และกรอกผลประเมินตนเอง (SAR)
+          </div>
         </div>
       </div>
 
@@ -351,6 +669,7 @@ export function UsersModule({
                   </code>
                 </div>
                 <div><strong>สิทธิ์การใช้งาน:</strong> {createdUserInfo.role}</div>
+                <div><strong>ลิงก์เข้าสู่ระบบ:</strong> <code>{getSiteUrl()}</code></div>
               </div>
             </div>
 
@@ -368,10 +687,11 @@ export function UsersModule({
                   padding: "8px 14px",
                 }}
                 onClick={() => {
-                  const textToCopy = `ข้อมูลเข้าสู่ระบบ School QA Center (รร.เทศบาล ๑ บ้านกลาง)\nเว็บไซต์: https://school-qa-center-nextjs-starter.vercel.app\nชื่อผู้ใช้/อีเมล: ${createdUserInfo.email}\nรหัสผ่านเริ่มต้น: ${createdUserInfo.pass}\nบทบาท: ${createdUserInfo.role}`;
+                  const textToCopy = `🏫 ข้อมูลเข้าใช้งานระบบ School QA Center (รร.เทศบาล ๑ บ้านกลาง)\n\n👤 ชื่อผู้ใช้/อีเมล: ${createdUserInfo.email}\n🔑 รหัสผ่านเริ่มต้น: ${createdUserInfo.pass}\n🏷️ บทบาท: ${createdUserInfo.role}\n🌐 ลิงก์เข้าสู่ระบบ: ${getSiteUrl()}\n\n📌 ขั้นตอน:\n1. เปิดลิงก์ด้านบน\n2. เข้าสู่ระบบด้วยอีเมลและรหัสผ่านเริ่มต้น\n3. เข้าตรวจเช็คและแนบหลักฐานประกันคุณภาพตามตัวชี้วัด`;
                   navigator.clipboard.writeText(textToCopy);
                   setCopied(true);
                   setTimeout(() => setCopied(false), 3000);
+                  showToast("คัดลอกข้อมูลส่งให้บุคลากรเรียบร้อยแล้ว", "success", "คัดลอกสำเร็จ");
                 }}
               >
                 {copied ? <Check size={16} /> : <Copy size={16} />}
@@ -512,11 +832,12 @@ export function UsersModule({
             <table>
               <thead>
                 <tr>
-                  <th style={{ width: "8%", textAlign: "center" }}>ลำดับ</th>
-                  <th style={{ width: "30%" }}>ชื่อ - นามสกุล</th>
-                  <th style={{ width: "22%" }}>ตำแหน่ง</th>
-                  <th style={{ width: "22%" }}>กลุ่มงาน / สังกัด</th>
-                  <th style={{ width: "18%" }}>บทบาทและสิทธิ์</th>
+                  <th style={{ width: "6%", textAlign: "center" }}>ลำดับ</th>
+                  <th style={{ width: "24%" }}>ชื่อ - นามสกุล</th>
+                  <th style={{ width: "18%" }}>ตำแหน่ง</th>
+                  <th style={{ width: "18%" }}>กลุ่มงาน / สังกัด</th>
+                  <th style={{ width: "16%" }}>บทบาทและสิทธิ์</th>
+                  <th style={{ width: "18%", textAlign: "center" }}>ส่งข้อมูลเข้าใช้งาน</th>
                 </tr>
               </thead>
               <tbody>
@@ -529,6 +850,51 @@ export function UsersModule({
                     <td>{userItem.position}</td>
                     <td>{userItem.department}</td>
                     <td>{getRoleBadge(userItem.role)}</td>
+                    <td style={{ textAlign: "center" }}>
+                      <div style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyUserLoginInfo(userItem)}
+                          title="คัดลอกข้อความและลิงก์ส่งให้ครูท่านนี้"
+                          style={{
+                            background: "#eff6ff",
+                            border: "1px solid #bfdbfe",
+                            color: "#1d4ed8",
+                            borderRadius: 6,
+                            padding: "4px 8px",
+                            fontSize: 11,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Copy size={12} />
+                          <span>คัดลอกส่งครู</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleShowUserLoginModal(userItem)}
+                          title="เปิดดูข้อมูลและรายละเอียดการเข้าใช้งาน"
+                          style={{
+                            background: "#f8fafc",
+                            border: "1px solid #cbd5e1",
+                            color: "#475569",
+                            borderRadius: 6,
+                            padding: "4px 8px",
+                            fontSize: 11,
+                            cursor: "pointer",
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Info size={12} />
+                          <span>ดูข้อมูล</span>
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -558,15 +924,18 @@ export function UsersModule({
               </label>
 
               <label>
-                อีเมลสำหรับเข้าใช้งาน <span style={{ color: "#d93838" }}>*</span>
+                อีเมลสำหรับเข้าใช้งาน (@gmail.com) <span style={{ color: "#d93838" }}>*</span>
                 <input
                   type="email"
                   required
-                  placeholder="teacher@banklang.ac.th"
+                  placeholder="เช่น teacher.bkw@gmail.com"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
                   disabled={busy}
                 />
+                <span style={{ fontSize: 11, color: "#2563eb", marginTop: 2, display: "block" }}>
+                  💡 ใช้อีเมล Gmail ของคุณครูสำหรับล็อกอินเข้าสู่ระบบ
+                </span>
               </label>
 
               <label>

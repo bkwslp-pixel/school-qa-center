@@ -9,6 +9,8 @@ import {
   X,
   Trash2,
   Sparkles,
+  Copy,
+  Check,
 } from "lucide-react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
@@ -35,7 +37,11 @@ export interface AlertDialogOptions {
   title: string;
   message: string;
   buttonText?: string;
-  type?: "info" | "success" | "warning";
+  type?: "info" | "success" | "warning" | "error";
+  nextStep?: string;
+  copyData?: string;
+  copyButtonText?: string;
+  onConfirm?: () => void;
 }
 
 interface NotificationContextType {
@@ -51,6 +57,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [confirmModal, setConfirmModal] = useState<ConfirmDialogOptions | null>(null);
   const [alertModal, setAlertModal] = useState<AlertDialogOptions | null>(null);
   const [confirmBusy, setConfirmBusy] = useState(false);
+  const [alertCopied, setAlertCopied] = useState(false);
 
   // Show Toast
   const showToast = useCallback(
@@ -80,6 +87,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Show Alert Dialog
   const showAlert = useCallback((options: AlertDialogOptions) => {
+    setAlertCopied(false);
     setAlertModal(options);
   }, []);
 
@@ -193,30 +201,147 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         </div>
       )}
 
-      {/* Premium Alert/Info Modal Dialog */}
+      {/* Premium Alert/Info Modal Dialog with Next Steps & Copy action */}
       {alertModal && (
         <div className="modal-backdrop premium-modal-backdrop" onClick={() => setAlertModal(null)}>
           <div
             className="premium-dialog"
+            style={{ maxWidth: 480, textAlign: "center" }}
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-modal="true"
           >
-            <div className="premium-dialog-badge badge-primary">
-              <Info size={26} />
+            <div
+              className={`premium-dialog-badge badge-${
+                alertModal.type === "success"
+                  ? "success"
+                  : alertModal.type === "error"
+                  ? "danger"
+                  : alertModal.type === "warning"
+                  ? "warning"
+                  : "primary"
+              }`}
+            >
+              {alertModal.type === "success" ? (
+                <CheckCircle2 size={30} />
+              ) : alertModal.type === "error" ? (
+                <AlertCircle size={30} />
+              ) : alertModal.type === "warning" ? (
+                <AlertTriangle size={30} />
+              ) : (
+                <Info size={30} />
+              )}
             </div>
 
             <h3 className="premium-dialog-title">{alertModal.title}</h3>
-            <p className="premium-dialog-message">{alertModal.message}</p>
+            <div className="premium-dialog-message" style={{ whiteSpace: "pre-line" }}>
+              {alertModal.message}
+            </div>
+
+            {/* Next Step / Actionable Instructions */}
+            {alertModal.nextStep && (
+              <div
+                style={{
+                  background:
+                    alertModal.type === "success"
+                      ? "rgba(22, 163, 74, 0.07)"
+                      : alertModal.type === "error"
+                      ? "rgba(220, 38, 38, 0.07)"
+                      : "rgba(2, 132, 199, 0.07)",
+                  border: `1px dashed ${
+                    alertModal.type === "success"
+                      ? "#86efac"
+                      : alertModal.type === "error"
+                      ? "#fca5a5"
+                      : "#7dd3fc"
+                  }`,
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  textAlign: "left",
+                  margin: "0 0 1.25rem 0",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontWeight: 700,
+                    marginBottom: 4,
+                    color:
+                      alertModal.type === "success"
+                        ? "#15803d"
+                        : alertModal.type === "error"
+                        ? "#b91c1c"
+                        : "#0284c7",
+                  }}
+                >
+                  <Sparkles size={16} />
+                  <span>สิ่งที่ควรดำเนินการต่อไป (Next Steps):</span>
+                </div>
+                <div style={{ color: "#334155", whiteSpace: "pre-line" }}>
+                  {alertModal.nextStep}
+                </div>
+              </div>
+            )}
+
+            {/* Quick Copy Data Button inside modal */}
+            {alertModal.copyData && (
+              <div style={{ marginBottom: "1.25rem" }}>
+                <button
+                  type="button"
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    background: alertCopied ? "#16a34a" : "#2563eb",
+                    color: "#ffffff",
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    fontWeight: 600,
+                    fontSize: 13,
+                    border: "none",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
+                  }}
+                  onClick={() => {
+                    if (alertModal.copyData) {
+                      navigator.clipboard.writeText(alertModal.copyData);
+                      setAlertCopied(true);
+                      setTimeout(() => setAlertCopied(false), 3000);
+                    }
+                  }}
+                >
+                  {alertCopied ? <Check size={16} /> : <Copy size={16} />}
+                  <span>{alertCopied ? "คัดลอกข้อมูลเรียบร้อยแล้ว!" : alertModal.copyButtonText || "คัดลอกข้อมูลส่งต่อ"}</span>
+                </button>
+              </div>
+            )}
 
             <div className="premium-dialog-actions">
               <button
                 type="button"
-                className="premium-btn-confirm btn-primary"
+                className={`premium-btn-confirm btn-${
+                  alertModal.type === "success"
+                    ? "success"
+                    : alertModal.type === "error"
+                    ? "danger"
+                    : alertModal.type === "warning"
+                    ? "warning"
+                    : "primary"
+                }`}
                 style={{ width: "100%" }}
-                onClick={() => setAlertModal(null)}
+                onClick={() => {
+                  if (alertModal.onConfirm) alertModal.onConfirm();
+                  setAlertModal(null);
+                }}
               >
-                {alertModal.buttonText || "เข้าใจแล้ว"}
+                {alertModal.buttonText || "รับทราบ / ดำเนินการต่อ"}
               </button>
             </div>
           </div>

@@ -586,6 +586,10 @@
   background: #fee2e2;
   color: #dc2626;
 }
+.premium-dialog-badge.badge-success {
+  background: #dcfce7;
+  color: #16a34a;
+}
 .premium-dialog-badge.badge-warning {
   background: #fef3c7;
   color: #d97706;
@@ -699,6 +703,17 @@
 .premium-btn-confirm.btn-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
   box-shadow: 0 6px 18px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
+}
+
+.premium-btn-confirm.btn-success {
+  background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
+  color: #ffffff;
+}
+
+.premium-btn-confirm.btn-success:hover:not(:disabled) {
+  background: linear-gradient(135deg, #15803d 0%, #166534 100%);
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.35);
   transform: translateY(-1px);
 }
 
