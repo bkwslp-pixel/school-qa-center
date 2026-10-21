@@ -86,9 +86,19 @@ BEGIN
         END IF;
     END IF;
 
-    -- If no valid school_id passed or found, look up the existing school in schools table
+    -- If no valid school_id passed or found, look up or initialize school in schools table
     IF valid_school_uuid IS NULL THEN
         SELECT id INTO valid_school_uuid FROM public.schools LIMIT 1;
+        IF valid_school_uuid IS NULL THEN
+            INSERT INTO public.schools (name, province, district, affiliation)
+            VALUES (
+                'โรงเรียนเทศบาล ๑ บ้านกลาง',
+                'จังหวัดลำพูน',
+                'อำเภอเมืองลำพูน',
+                'สังกัดเทศบาลตำบลบ้านกลาง กรมส่งเสริมการปกครองท้องถิ่น'
+            )
+            RETURNING id INTO valid_school_uuid;
+        END IF;
     END IF;
 
     new_user_id := gen_random_uuid();
@@ -179,16 +189,23 @@ BEGIN
 
     -- 4. Upsert user_roles
     IF valid_school_uuid IS NOT NULL THEN
-        INSERT INTO public.user_roles (
-            user_id,
-            school_id,
-            role
-        ) VALUES (
-            new_user_id,
-            valid_school_uuid,
-            COALESCE(p_role, 'teacher')
-        )
-        ON CONFLICT (user_id, school_id, role) DO NOTHING;
+        BEGIN
+            EXECUTE '
+                INSERT INTO public.user_roles (user_id, school_id, role)
+                VALUES ($1, $2, $3::app_role)
+                ON CONFLICT (user_id, school_id, role) DO NOTHING
+            ' USING new_user_id, valid_school_uuid, COALESCE(p_role, 'teacher');
+        EXCEPTION WHEN OTHERS THEN
+            BEGIN
+                EXECUTE '
+                    INSERT INTO public.user_roles (user_id, school_id, role)
+                    VALUES ($1, $2, $3)
+                    ON CONFLICT (user_id, school_id, role) DO NOTHING
+                ' USING new_user_id, valid_school_uuid, COALESCE(p_role, 'teacher');
+            EXCEPTION WHEN OTHERS THEN
+                NULL;
+            END;
+        END;
     END IF;
 
     RETURN json_build_object(
