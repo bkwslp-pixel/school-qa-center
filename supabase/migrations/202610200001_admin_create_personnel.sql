@@ -31,10 +31,20 @@ EXCEPTION WHEN OTHERS THEN
   NULL;
 END $$;
 
--- Clean up any previous signatures to avoid 42725 ambiguity error
-DROP FUNCTION IF EXISTS public.admin_create_personnel(text, text, text, text, text, text, uuid);
-DROP FUNCTION IF EXISTS public.admin_create_personnel(text, text, text, text, text, text, text);
-DROP FUNCTION IF EXISTS public.admin_create_personnel;
+-- Clean up all existing overloaded signatures of admin_create_personnel safely
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    FOR r IN (
+        SELECT oid::regprocedure AS func_signature
+        FROM pg_proc
+        WHERE proname = 'admin_create_personnel'
+          AND pronamespace = 'public'::regnamespace
+    ) LOOP
+        EXECUTE 'DROP FUNCTION ' || r.func_signature || ' CASCADE';
+    END LOOP;
+END $$;
 
 CREATE OR REPLACE FUNCTION public.admin_create_personnel(
     p_email text,
