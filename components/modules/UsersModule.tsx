@@ -164,7 +164,7 @@ export function UsersModule({
     if (!sb) return;
     setLoading(true);
     try {
-      const { data, error } = await sb
+      const res = await sb
         .from("profiles")
         .select(
           `
@@ -179,8 +179,41 @@ export function UsersModule({
         )
         .order("created_at", { ascending: false });
 
-      if (!error && data) {
-        const typedRows = data as unknown as ProfileDbRow[];
+      if (res.error) {
+        // Fallback for database schema with user_id & display_name
+        const fallbackRes = await sb
+          .from("profiles")
+          .select(
+            `
+            user_id,
+            display_name,
+            email,
+            user_roles(role)
+          `
+          )
+          .order("created_at", { ascending: false });
+
+        if (!fallbackRes.error && fallbackRes.data) {
+          const fallbackRows = fallbackRes.data as Array<{
+            user_id: string;
+            display_name?: string | null;
+            email?: string | null;
+            user_roles?: Array<{ role: UserRoleType }> | null;
+          }>;
+          const mapped: Profile[] = fallbackRows.map((p) => {
+            const role = p.user_roles?.[0]?.role || "teacher";
+            return {
+              id: p.user_id,
+              full_name: p.display_name || p.email || "บุคลากร",
+              position: "ครูผู้สอน",
+              department: "กลุ่มงานวิชาการ",
+              role,
+            };
+          });
+          setUserList(mapped);
+        }
+      } else if (res.data) {
+        const typedRows = res.data as unknown as ProfileDbRow[];
         const mapped: Profile[] = typedRows.map((p) => {
           const role = p.user_roles?.[0]?.role || "teacher";
           return {

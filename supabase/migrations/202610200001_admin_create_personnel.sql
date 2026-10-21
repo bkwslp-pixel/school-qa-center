@@ -1,6 +1,36 @@
 -- Migration: 202610200001_admin_create_personnel.sql
 -- Function to allow admin to create personnel auth account + profile + role in one step
 
+-- 1. Ensure profiles table has all required columns for School QA Center
+ALTER TABLE public.profiles 
+  ADD COLUMN IF NOT EXISTS id UUID,
+  ADD COLUMN IF NOT EXISTS full_name VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS position VARCHAR(100) DEFAULT 'ครูผู้สอน',
+  ADD COLUMN IF NOT EXISTS department VARCHAR(100) DEFAULT 'กลุ่มงานวิชาการ',
+  ADD COLUMN IF NOT EXISTS school_id UUID,
+  ADD COLUMN IF NOT EXISTS phone VARCHAR(50),
+  ADD COLUMN IF NOT EXISTS avatar_url TEXT;
+
+-- Sync id from user_id if user_id column exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'profiles' AND column_name = 'user_id') THEN
+    UPDATE public.profiles SET id = user_id WHERE id IS NULL AND user_id IS NOT NULL;
+  END IF;
+END $$;
+
+-- Ensure id constraint exists on profiles
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'profiles_id_key' OR (conname = 'profiles_pkey' AND conrelid = 'public.profiles'::regclass)
+  ) THEN
+    ALTER TABLE public.profiles ADD CONSTRAINT profiles_id_key UNIQUE (id);
+  END IF;
+EXCEPTION WHEN OTHERS THEN
+  NULL;
+END $$;
+
 CREATE OR REPLACE FUNCTION public.admin_create_personnel(
     p_email text,
     p_password text,
@@ -128,25 +158,29 @@ BEGIN
         END;
     END;
 
-    -- 3. Upsert profiles
-    INSERT INTO public.profiles (
-        id,
-        full_name,
-        position,
-        department,
-        school_id
-    ) VALUES (
-        new_user_id,
-        p_full_name,
-        COALESCE(p_position, 'ครูผู้สอน'),
-        COALESCE(p_department, 'กลุ่มสาระการเรียนรู้'),
-        valid_school_uuid
-    )
-    ON CONFLICT (id) DO UPDATE SET
-        full_name = EXCLUDED.full_name,
-        position = EXCLUDED.position,
-        department = EXCLUDED.department,
-        school_id = EXCLUDED.school_id;
+    -- 3. Upsert profiles (Supports both 'id' and 'user_id' schemas resiliently)
+    BEGIN
+        EXECUTE '
+            INSERT INTO public.profiles (id, full_name, position, department, school_id)
+            VALUES ($1, $2, $3, $4, $5)
+            ON CONFLICT (id) DO UPDATE SET
+                full_name = EXCLUDED.full_name,
+                position = EXCLUDED.position,
+                department = EXCLUDED.department,
+                school_id = EXCLUDED.school_id
+        ' USING new_user_id, p_full_name, COALESCE(p_position, 'ครูผู้สอน'), COALESCE(p_department, 'กลุ่มงานวิชาการ'), valid_school_uuid;
+    EXCEPTION WHEN OTHERS THEN
+        BEGIN
+            -- Fallback if table only has user_id or display_name
+            EXECUTE '
+                INSERT INTO public.profiles (user_id, display_name, email)
+                VALUES ($1, $2, $3)
+                ON CONFLICT DO NOTHING
+            ' USING new_user_id, p_full_name, clean_email;
+        EXCEPTION WHEN OTHERS THEN
+            NULL;
+        END;
+    END;
 
     -- 4. Upsert user_roles
     IF valid_school_uuid IS NOT NULL THEN

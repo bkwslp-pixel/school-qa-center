@@ -91,14 +91,30 @@ export async function POST(req: Request) {
 
       const newUserId = userData.user.id;
 
-      // Upsert profile
-      await supabaseAdmin.from("profiles").upsert({
-        id: newUserId,
-        full_name: fullName.trim(),
-        position: position.trim() || "ครูผู้สอน",
-        department: department.trim() || "กลุ่มงานวิชาการ",
-        school_id: safeSchoolId,
-      });
+      // Upsert profile safely (supporting both id and user_id schemas)
+      try {
+        const { error: profErr } = await supabaseAdmin.from("profiles").upsert({
+          id: newUserId,
+          full_name: fullName.trim(),
+          position: position.trim() || "ครูผู้สอน",
+          department: department.trim() || "กลุ่มงานวิชาการ",
+          school_id: safeSchoolId,
+        });
+        if (profErr) {
+          throw profErr;
+        }
+      } catch (profErr) {
+        // Fallback for profiles schema with user_id & display_name
+        try {
+          await supabaseAdmin.from("profiles").upsert({
+            user_id: newUserId,
+            display_name: fullName.trim(),
+            email: email.trim().toLowerCase(),
+          });
+        } catch {
+          console.warn("Profile fallback insert failed:", profErr);
+        }
+      }
 
       // Upsert user_role
       if (safeSchoolId) {
