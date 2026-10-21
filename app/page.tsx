@@ -81,7 +81,7 @@ export default function DashboardPage() {
 
   // Live Data states (Clean Production State)
   const [school, setSchool] = useState<School | null>({
-    id: "sch-1",
+    id: "",
     name: "โรงเรียนเทศบาล ๑ บ้านกลาง",
     district: "อำเภอเมืองลำพูน",
     province: "จังหวัดลำพูน",
@@ -186,16 +186,19 @@ export default function DashboardPage() {
 
       if (client) {
         try {
-          const targetSchoolId = school?.id ?? "sch-1";
-          await client.from("academic_years").upsert(
-            {
-              school_id: targetSchoolId,
-              year: clean,
-              is_active: true,
-              updated_at: new Date().toISOString(),
-            },
-            { onConflict: "school_id,year" }
-          );
+          const isValidSchoolUuid =
+            Boolean(school?.id && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(school.id));
+          if (isValidSchoolUuid && school?.id) {
+            await client.from("academic_years").upsert(
+              {
+                school_id: school.id,
+                year: clean,
+                is_active: true,
+                updated_at: new Date().toISOString(),
+              },
+              { onConflict: "school_id,year" }
+            );
+          }
         } catch (err) {
           console.warn("Save academic year error:", err);
         }
