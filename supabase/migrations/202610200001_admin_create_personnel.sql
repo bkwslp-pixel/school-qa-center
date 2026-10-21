@@ -140,7 +140,7 @@ BEGIN
             created_at,
             updated_at
         ) VALUES (
-            new_user_id::text,
+            new_user_id,
             new_user_id,
             json_build_object('sub', new_user_id::text, 'email', clean_email)::jsonb,
             'email',
@@ -150,27 +150,7 @@ BEGIN
             now()
         );
     EXCEPTION WHEN OTHERS THEN
-        BEGIN
-            INSERT INTO auth.identities (
-                id,
-                user_id,
-                identity_data,
-                provider,
-                last_sign_in_at,
-                created_at,
-                updated_at
-            ) VALUES (
-                new_user_id::text,
-                new_user_id,
-                json_build_object('sub', new_user_id::text, 'email', clean_email)::jsonb,
-                'email',
-                now(),
-                now(),
-                now()
-            );
-        EXCEPTION WHEN OTHERS THEN
-            NULL;
-        END;
+        NULL;
     END;
 
     -- 3. Upsert profiles (Supports both 'id' and 'user_id' schemas resiliently)
