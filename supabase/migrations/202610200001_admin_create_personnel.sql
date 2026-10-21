@@ -221,3 +221,13 @@ $$;
 
 -- Grant execution permission unambiguously
 GRANT EXECUTE ON FUNCTION public.admin_create_personnel(text, text, text, text, text, text, text) TO anon, authenticated, service_role;
+
+-- Allow reading school and role information
+ALTER TABLE public.schools ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS schools_read_policy ON public.schools;
+CREATE POLICY schools_read_policy ON public.schools FOR SELECT USING (true);
+
+ALTER TABLE public.user_roles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS user_roles_read_policy ON public.user_roles;
+CREATE POLICY user_roles_read_policy ON public.user_roles FOR SELECT USING (true);
+
