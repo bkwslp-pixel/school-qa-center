@@ -90,12 +90,11 @@ BEGIN
     IF valid_school_uuid IS NULL THEN
         SELECT id INTO valid_school_uuid FROM public.schools LIMIT 1;
         IF valid_school_uuid IS NULL THEN
-            INSERT INTO public.schools (name, province, district, affiliation)
+            INSERT INTO public.schools (name, province, district)
             VALUES (
                 'โรงเรียนเทศบาล ๑ บ้านกลาง',
                 'จังหวัดลำพูน',
-                'อำเภอเมืองลำพูน',
-                'สังกัดเทศบาลตำบลบ้านกลาง กรมส่งเสริมการปกครองท้องถิ่น'
+                'อำเภอเมืองลำพูน'
             )
             RETURNING id INTO valid_school_uuid;
         END IF;
@@ -166,10 +165,12 @@ BEGIN
     -- 3. Upsert profiles (Supports both 'id' and 'user_id' schemas resiliently)
     BEGIN
         EXECUTE '
-            INSERT INTO public.profiles (id, full_name, position, department, school_id)
-            VALUES ($1, $2, $3, $4, $5)
-            ON CONFLICT (id) DO UPDATE SET
+            INSERT INTO public.profiles (user_id, id, full_name, display_name, position, department, school_id)
+            VALUES ($1, $1, $2, $2, $3, $4, $5)
+            ON CONFLICT (user_id) DO UPDATE SET
+                id = EXCLUDED.id,
                 full_name = EXCLUDED.full_name,
+                display_name = EXCLUDED.display_name,
                 position = EXCLUDED.position,
                 department = EXCLUDED.department,
                 school_id = EXCLUDED.school_id
