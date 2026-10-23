@@ -92,6 +92,36 @@ export default function DashboardPage() {
   const [evidenceCount, setEvidenceCount] = useState(0);
   const [taskCount, setTaskCount] = useState(0);
   const [indicatorCount, setIndicatorCount] = useState(standardEducationIndicators.length);
+  const [evaluationsSummary, setEvaluationsSummary] = useState<{
+    excellent?: number;
+    good?: number;
+    medium?: number;
+    fair?: number;
+    needsWork?: number;
+  } | undefined>(undefined);
+
+  // Synchronize menu with URL query parameters and browser navigation history
+  const handleSelectMenu = useCallback((menu: string) => {
+    setActiveMenu(menu);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (menu === "หน้าหลัก") {
+        url.searchParams.delete("menu");
+      } else {
+        url.searchParams.set("menu", menu);
+      }
+      window.history.pushState({ menu }, "", url.toString());
+    }
+  }, []);
+
+  const handleSelectYear = useCallback((yr: string) => {
+    setSchoolYear(yr);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("year", yr);
+      window.history.replaceState(null, "", url.toString());
+    }
+  }, []);
 
   const loadData = useCallback(async (sb: SupabaseClient) => {
     try {
@@ -103,7 +133,7 @@ export default function DashboardPage() {
         indicatorsRes,
         indicatorsCountRes,
         yearsRes,
-        evidenceYearsRes,
+        evaluationsRes,
       ] = await Promise.all([
         sb.from("schools").select("id,name,province,district,affiliation").limit(1).maybeSingle(),
         sb.from("evidence_records").select("id", { count: "exact", head: true }),
@@ -112,7 +142,7 @@ export default function DashboardPage() {
         sb.from("indicators").select("id,code,title_th,standard_id,weight,target_score").order("sort_order").limit(15),
         sb.from("indicators").select("id", { count: "exact", head: true }),
         sb.from("academic_years").select("year, is_active").order("year", { ascending: false }),
-        sb.from("evidence_records").select("academic_year").not("academic_year", "is", null),
+        sb.from("evaluations").select("self_score, status"),
       ]);
 
       const firstError =
@@ -148,19 +178,28 @@ export default function DashboardPage() {
         setIndicatorCount(indicatorsCountRes.count);
       }
 
-      // Hybrid dynamic academic years: merge DB years and evidence records
+      // Live calculation of evaluations summary for dashboard analytics
+      if (evaluationsRes?.data && evaluationsRes.data.length > 0) {
+        const summary = { excellent: 0, good: 0, medium: 0, fair: 0, needsWork: 0 };
+        evaluationsRes.data.forEach((row: { self_score?: number | string | null }) => {
+          const s = row.self_score ? Math.round(Number(row.self_score)) : 0;
+          if (s >= 5) summary.excellent += 1;
+          else if (s === 4) summary.good += 1;
+          else if (s === 3) summary.medium += 1;
+          else if (s === 2) summary.fair += 1;
+          else if (s === 1) summary.needsWork += 1;
+        });
+        setEvaluationsSummary(summary);
+      }
+
+      // Dynamic academic years from academic_years table
       const allFoundYears = new Set<string>(["2569", "2568", "2567", "2566"]);
-      if (yearsRes?.data) {
+      if (yearsRes?.data && yearsRes.data.length > 0) {
         yearsRes.data.forEach((r: { year: string; is_active?: boolean }) => {
           if (r.year) allFoundYears.add(r.year);
-          if (r.is_active) {
+          if (r.is_active && typeof window !== "undefined" && !window.location.search.includes("year=")) {
             setSchoolYear((prev) => (prev === "2567" ? r.year : prev));
           }
-        });
-      }
-      if (evidenceYearsRes?.data) {
-        evidenceYearsRes.data.forEach((r: { academic_year: string }) => {
-          if (r.academic_year) allFoundYears.add(r.academic_year);
         });
       }
       const sortedYears = Array.from(allFoundYears).sort((a, b) => b.localeCompare(a));
@@ -182,7 +221,7 @@ export default function DashboardPage() {
         const next = Array.from(new Set([clean, ...prev])).sort((a, b) => b.localeCompare(a));
         return next;
       });
-      setSchoolYear(clean);
+      handleSelectYear(clean);
 
       if (client) {
         try {
@@ -205,12 +244,38 @@ export default function DashboardPage() {
       }
       showToast(`เพิ่มปีการศึกษา ${clean} เข้าสู่ระบบเรียบร้อยแล้ว`, "success", "บันทึกข้อมูลสำเร็จ");
     },
-    [client, school?.id, showToast]
+    [client, school?.id, showToast, handleSelectYear]
   );
 
   useEffect(() => {
-    // Check invite or reset tokens in URL hash
+    // 1. Check URL parameters on mount and listen to popstate (browser back/forward)
     if (typeof window !== "undefined") {
+      const applyUrlParams = () => {
+        const params = new URLSearchParams(window.location.search);
+        const menuParam = params.get("menu");
+        const yearParam = params.get("year");
+        const VALID_MENUS = [
+          "หน้าหลัก",
+          "มาตรฐานและตัวชี้วัด",
+          "คลังหลักฐาน",
+          "ผลการประเมิน",
+          "งานติดตาม",
+          "รายงาน",
+          "จัดการผู้ใช้",
+          "ตั้งค่าระบบ",
+        ];
+        if (menuParam && VALID_MENUS.includes(menuParam)) {
+          setActiveMenu(menuParam);
+        }
+        if (yearParam && /^\d{4}$/.test(yearParam)) {
+          setSchoolYear(yearParam);
+        }
+      };
+
+      applyUrlParams();
+      window.addEventListener("popstate", applyUrlParams);
+
+      // Check invite or reset tokens in URL hash
       const authParams = new URLSearchParams(window.location.hash.slice(1));
       const linkError = authParams.get("error_description");
       if (linkError) {
@@ -367,12 +432,12 @@ export default function DashboardPage() {
       {/* Sidebar Navigation */}
       <Sidebar
         activeMenu={activeMenu}
-        setActiveMenu={setActiveMenu}
+        setActiveMenu={handleSelectMenu}
         mobileNav={mobileNav}
         setMobileNav={setMobileNav}
         school={school}
         schoolYear={schoolYear}
-        setSchoolYear={setSchoolYear}
+        setSchoolYear={handleSelectYear}
         availableYears={availableYears}
         isAdminOrLeadership={isAdminOrLeadership}
       />
@@ -392,6 +457,7 @@ export default function DashboardPage() {
           onOpenLogin={() => setShowLogin(true)}
           onOpenChangePassword={() => setShowChangePassword(true)}
           notificationCount={tasks.filter((t) => t.status !== "completed").length}
+          onNotificationClick={() => handleSelectMenu("งานติดตาม")}
         />
 
         <div className="content">
@@ -403,7 +469,7 @@ export default function DashboardPage() {
                 selectedLevel={selectedLevel}
                 setSelectedLevel={setSelectedLevel}
                 schoolYear={schoolYear}
-                setSchoolYear={setSchoolYear}
+                setSchoolYear={handleSelectYear}
                 availableYears={availableYears}
                 onAddAcademicYear={handleAddAcademicYear}
                 isAdminOrLeadership={isAdminOrLeadership}
@@ -418,19 +484,22 @@ export default function DashboardPage() {
                 taskCount={taskCount}
               />
 
-              <AnalyticsGrid totalIndicators={indicatorCount} />
+              <AnalyticsGrid
+                totalIndicators={indicatorCount}
+                evaluationsSummary={evaluationsSummary}
+              />
 
               <IndicatorsTable
                 indicators={indicators}
                 loadState={loadState}
                 hasUser={Boolean(user)}
-                onViewAll={() => setActiveMenu("มาตรฐานและตัวชี้วัด")}
+                onViewAll={() => handleSelectMenu("มาตรฐานและตัวชี้วัด")}
                 query={query}
               />
 
               <TasksWidget
                 tasks={tasks}
-                onViewAllTasks={() => setActiveMenu("งานติดตาม")}
+                onViewAllTasks={() => handleSelectMenu("งานติดตาม")}
               />
             </>
           )}
@@ -438,7 +507,9 @@ export default function DashboardPage() {
           {activeMenu === "มาตรฐานและตัวชี้วัด" && (
             <StandardsModule
               indicators={indicators}
-              onBack={() => setActiveMenu("หน้าหลัก")}
+              onBack={() => handleSelectMenu("หน้าหลัก")}
+              onNavigateToEvaluations={() => handleSelectMenu("ผลการประเมิน")}
+              onNavigateToEvidence={() => handleSelectMenu("คลังหลักฐาน")}
             />
           )}
 
@@ -460,7 +531,7 @@ export default function DashboardPage() {
               client={client}
               indicators={indicators}
               academicYear={schoolYear}
-              onNavigateToEvidence={() => setActiveMenu("คลังหลักฐาน")}
+              onNavigateToEvidence={() => handleSelectMenu("คลังหลักฐาน")}
             />
           )}
 
@@ -503,7 +574,7 @@ export default function DashboardPage() {
                   สำหรับคุณครูผู้รับผิดชอบตัวชี้วัด ท่านสามารถอัปโหลดเอกสารหลักฐาน บันทึกคะแนนประเมินตนเอง และติดตามภารกิจได้ที่เมนู <strong>&ldquo;คลังหลักฐาน&rdquo;</strong> และ <strong>&ldquo;ผลการประเมิน&rdquo;</strong> ได้ตามปกติ
                 </p>
                 <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}>
-                  <button className="primary-button" onClick={() => setActiveMenu("หน้าหลัก")}>
+                  <button className="primary-button" onClick={() => handleSelectMenu("หน้าหลัก")}>
                     กลับสู่หน้าหลัก
                   </button>
                   {!user && (
@@ -529,7 +600,7 @@ export default function DashboardPage() {
                 currentYearProp={schoolYear}
                 availableYears={availableYears}
                 onAddAcademicYear={handleAddAcademicYear}
-                onYearChange={(y) => setSchoolYear(y)}
+                onYearChange={(y) => handleSelectYear(y)}
                 onUpdateSchool={(updated) =>
                   setSchool((prev) => (prev ? { ...prev, ...updated } : (updated as School)))
                 }
@@ -545,7 +616,7 @@ export default function DashboardPage() {
                 <p style={{ color: "#64748b", fontSize: 13, lineHeight: 1.8, margin: "0 0 24px" }}>
                   เมนูการตั้งค่าข้อมูลพื้นฐานของโรงเรียนสงวนสิทธิ์เฉพาะฝ่ายบริหารและผู้ดูแลระบบเท่านั้น
                 </p>
-                <button className="primary-button" onClick={() => setActiveMenu("หน้าหลัก")}>
+                <button className="primary-button" onClick={() => handleSelectMenu("หน้าหลัก")}>
                   กลับสู่หน้าหลัก
                 </button>
               </div>

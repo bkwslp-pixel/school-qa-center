@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, Fragment } from "react";
 import {
   Printer,
   Download,
@@ -93,19 +93,21 @@ export function ReportsModule({
     return standards.map((std) => {
       const stdNum = std.code.replace(/\D/g, "");
       const stdIndicators = indicators.filter((i) => i.code.startsWith(`${stdNum}.`));
-      const scores = stdIndicators.map((i) => scoresMap[i.code] || 4); // Default to 4 (ดีเลิศ) if not rated yet for sample
-      const sum = scores.reduce((a, b) => a + b, 0);
-      const avg = scores.length > 0 ? (sum / scores.length).toFixed(2) : "0.00";
-      const decision = evaluateStandardStatus(scores);
+      const scores = stdIndicators.map((i) => scoresMap[i.code] ?? 0);
+      const validScores = scores.filter((s) => s > 0);
+      const sum = validScores.reduce((a, b) => a + b, 0);
+      const avg = validScores.length > 0 ? (sum / validScores.length).toFixed(2) : "0.00";
+      const decision = validScores.length === 0 ? "รอการประเมิน" : evaluateStandardStatus(scores);
 
       return {
         ...std,
         indicators: stdIndicators.map((ind) => ({
           ...ind,
-          score: scoresMap[ind.code] || 4,
+          score: scoresMap[ind.code] ?? 0,
         })),
         avg,
         decision,
+        ratedCount: validScores.length,
       };
     });
   }, [standards, indicators, scoresMap]);
@@ -113,15 +115,22 @@ export function ReportsModule({
   // Overall Decision
   const overallStats = useMemo(() => {
     const allScores = standardsSummary.flatMap((s) => s.indicators.map((i) => i.score));
-    const sum = allScores.reduce((a, b) => a + b, 0);
-    const avg = allScores.length > 0 ? (sum / allScores.length).toFixed(2) : "0.00";
-    const allMeetStandard = allScores.every((s) => s >= 3);
-    const decision = allMeetStandard ? "เป็นไปตามมาตรฐาน" : "อยู่ระหว่างการพัฒนา";
+    const validScores = allScores.filter((s) => s > 0);
+    const sum = validScores.reduce((a, b) => a + b, 0);
+    const avg = validScores.length > 0 ? (sum / validScores.length).toFixed(2) : "0.00";
+    const allMeetStandard = validScores.length === allScores.length && allScores.every((s) => s >= 3);
+    const decision =
+      validScores.length === 0
+        ? "รอการประเมิน"
+        : allMeetStandard
+        ? "เป็นไปตามมาตรฐาน"
+        : "อยู่ระหว่างการพัฒนา";
 
     return {
       avg,
       decision,
       indicatorCount: allScores.length,
+      ratedCount: validScores.length,
     };
   }, [standardsSummary]);
 
@@ -458,14 +467,14 @@ export function ReportsModule({
             </thead>
             <tbody>
               {standardsSummary.map((std) => (
-                <div key={std.id} style={{ display: "contents" }}>
+                <Fragment key={std.id}>
                   {/* Standard Header Row */}
                   <tr style={{ background: "#f8fafc" }}>
                     <td colSpan={2} style={{ padding: "10px 12px", border: "1px solid #cbd5e1", fontWeight: 700, color: "#1e40af" }}>
                       {std.code}: {std.title} ({std.indicatorCount} ตัวชี้วัด)
                     </td>
                     <td style={{ padding: "10px 12px", border: "1px solid #cbd5e1", fontWeight: 700, textAlign: "center", color: "#1e40af" }}>
-                      เฉลี่ย {std.avg}
+                      {std.avg !== "0.00" ? `เฉลี่ย ${std.avg}` : "รอประเมิน"}
                     </td>
                     <td style={{ padding: "10px 12px", border: "1px solid #cbd5e1", fontWeight: 700, textAlign: "center" }}>
                       <span
@@ -473,8 +482,18 @@ export function ReportsModule({
                           fontSize: 11,
                           padding: "2px 8px",
                           borderRadius: 6,
-                          background: std.decision === "เป็นไปตามมาตรฐาน" ? "#dcfce7" : "#ffedd5",
-                          color: std.decision === "เป็นไปตามมาตรฐาน" ? "#166534" : "#c2410c",
+                          background:
+                            std.decision === "เป็นไปตามมาตรฐาน"
+                              ? "#dcfce7"
+                              : std.decision === "อยู่ระหว่างการพัฒนา"
+                              ? "#ffedd5"
+                              : "#f1f5f9",
+                          color:
+                            std.decision === "เป็นไปตามมาตรฐาน"
+                              ? "#166534"
+                              : std.decision === "อยู่ระหว่างการพัฒนา"
+                              ? "#c2410c"
+                              : "#64748b",
                         }}
                       >
                         {std.decision}
@@ -493,7 +512,7 @@ export function ReportsModule({
                         <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{ind.description}</div>
                       </td>
                       <td style={{ padding: "8px 12px", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: 700 }}>
-                        {ind.score}
+                        {ind.score > 0 ? ind.score : "-"}
                       </td>
                       <td style={{ padding: "8px 12px", border: "1px solid #cbd5e1", textAlign: "center" }}>
                         <span
@@ -501,16 +520,30 @@ export function ReportsModule({
                             fontSize: 11,
                             padding: "2px 6px",
                             borderRadius: 4,
-                            background: ind.score >= 3 ? "#f0fdf4" : "#fff7ed",
-                            color: ind.score >= 3 ? "#15803d" : "#c2410c",
+                            background:
+                              ind.score >= 3
+                                ? "#f0fdf4"
+                                : ind.score > 0
+                                ? "#fff7ed"
+                                : "#f1f5f9",
+                            color:
+                              ind.score >= 3
+                                ? "#15803d"
+                                : ind.score > 0
+                                ? "#c2410c"
+                                : "#64748b",
                           }}
                         >
-                          {ind.score >= 3 ? "ผ่านเกณฑ์" : "ควรปรับปรุง"}
+                          {ind.score >= 3
+                            ? "ผ่านเกณฑ์"
+                            : ind.score > 0
+                            ? "ควรปรับปรุง"
+                            : "รอการประเมิน"}
                         </span>
                       </td>
                     </tr>
                   ))}
-                </div>
+                </Fragment>
               ))}
             </tbody>
           </table>

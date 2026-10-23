@@ -17,6 +17,7 @@ interface TopbarProps {
   onOpenLogin: () => void;
   onOpenChangePassword?: () => void;
   notificationCount?: number;
+  onNotificationClick?: () => void;
 }
 
 export function Topbar({
@@ -31,6 +32,7 @@ export function Topbar({
   onOpenLogin,
   onOpenChangePassword,
   notificationCount = 3,
+  onNotificationClick,
 }: TopbarProps) {
   const getRoleTitle = (role?: UserRoleType | null) => {
     switch (role) {
@@ -72,8 +74,9 @@ export function Topbar({
 
         <button
           className="icon-button notification"
-          aria-label="การแจ้งเตือน"
-          title={`${notificationCount} งานที่ต้องดำเนินการ`}
+          aria-label="การแจ้งเตือนงานติดตาม"
+          title={`${notificationCount} งานที่ต้องดำเนินการ (คลิกเพื่อเปิดดูงานติดตาม)`}
+          onClick={onNotificationClick}
         >
           <Bell size={21} />
           {notificationCount > 0 && <i>{notificationCount}</i>}

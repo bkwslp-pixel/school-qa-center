@@ -32,10 +32,62 @@ export async function POST(req: Request) {
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-    if (!supabaseUrl) {
+    if (!supabaseUrl || (!serviceRoleKey && !anonKey)) {
       return NextResponse.json(
-        { error: "ไม่พบการตั้งค่า NEXT_PUBLIC_SUPABASE_URL" },
+        { error: "ไม่พบการตั้งค่าการเชื่อมต่อฐานข้อมูล Supabase" },
         { status: 500 }
+      );
+    }
+
+    // Security Check: Verify that caller is an authenticated user with admin/school_leadership role
+    const authHeader = req.headers.get("authorization");
+    const token = authHeader?.startsWith("Bearer ") ? authHeader.substring(7) : null;
+
+    if (!token) {
+      return NextResponse.json(
+        { error: "กรุณาเข้าสู่ระบบด้วยสิทธิ์ผู้ดูแลระบบก่อนสร้างบัญชีบุคลากร (Missing Authorization Token)" },
+        { status: 401 }
+      );
+    }
+
+    // Authenticate caller token with Supabase
+    const authClient = createClient(supabaseUrl, anonKey || serviceRoleKey!, {
+      auth: { persistSession: false, autoRefreshToken: false },
+      global: { headers: { Authorization: `Bearer ${token}` } },
+    });
+
+    const {
+      data: { user: callerUser },
+      error: callerError,
+    } = await authClient.auth.getUser();
+
+    if (callerError || !callerUser) {
+      return NextResponse.json(
+        { error: "โทเค็นการเข้าสู่ระบบไม่ถูกต้องหรือหมดอายุ กรุณาเข้าสู่ระบบใหม่อีกครั้ง" },
+        { status: 401 }
+      );
+    }
+
+    // Check caller's role in user_roles table
+    const checkClient = serviceRoleKey
+      ? createClient(supabaseUrl, serviceRoleKey)
+      : authClient;
+
+    const { data: roleRow } = await checkClient
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", callerUser.id)
+      .maybeSingle();
+
+    const isAllowed =
+      roleRow?.role === "admin" ||
+      roleRow?.role === "school_leadership" ||
+      callerUser.email === "bkwslp@gmail.com";
+
+    if (!isAllowed) {
+      return NextResponse.json(
+        { error: "สงวนสิทธิ์เฉพาะผู้ดูแลระบบและฝ่ายบริหารเท่านั้นในการสร้างและกำหนดสิทธิ์ผู้ใช้งาน" },
+        { status: 403 }
       );
     }
 

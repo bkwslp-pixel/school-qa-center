@@ -13,6 +13,8 @@ import {
   GraduationCap,
   ChevronDown,
   ChevronUp,
+  RotateCcw,
+  Trash2,
 } from "lucide-react";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 import { getSupabase } from "@/lib/supabase";
@@ -206,6 +208,112 @@ export function EvaluationsModule({
     void fetchLiveEvaluations();
   }, [fetchLiveEvaluations]);
 
+  // Draft Auto-Save & Recovery state
+  const draftStorageKey = `qa_eval_draft_${academicYear}_${levelTab}`;
+  const [hasRecoverableDraft, setHasRecoverableDraft] = useState<{
+    savedAt: string;
+    count: number;
+    data: Array<{
+      code: string;
+      selfScore: number;
+      strengths?: string;
+      weaknesses?: string;
+      improvementPlan?: string;
+      riskAssessment?: string;
+      bestPracticeNote?: string;
+    }>;
+  } | null>(null);
+
+  // Check for existing draft on tab / year change
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const saved = localStorage.getItem(draftStorageKey);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && Array.isArray(parsed.data) && parsed.data.length > 0) {
+          const filledCount = parsed.data.filter(
+            (d: { selfScore?: number; strengths?: string; weaknesses?: string }) =>
+              (d.selfScore && d.selfScore > 0) || Boolean(d.strengths?.trim()) || Boolean(d.weaknesses?.trim())
+          ).length;
+          if (filledCount > 0) {
+            setHasRecoverableDraft({
+              savedAt: parsed.savedAt || new Date().toISOString(),
+              count: filledCount,
+              data: parsed.data,
+            });
+            return;
+          }
+        }
+      }
+      setHasRecoverableDraft(null);
+    } catch {
+      setHasRecoverableDraft(null);
+    }
+  }, [draftStorageKey]);
+
+  // Auto-save draft changes to localStorage (debounced)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const filledItems = activeAllItems.filter(
+      (item) => item.selfScore > 0 || item.strengths.trim() || item.weaknesses.trim() || item.improvementPlan.trim()
+    );
+    if (filledItems.length === 0) return;
+
+    const timeout = setTimeout(() => {
+      try {
+        const payload = {
+          savedAt: new Date().toISOString(),
+          data: activeAllItems.map((item) => ({
+            code: item.code,
+            selfScore: item.selfScore,
+            strengths: item.strengths,
+            weaknesses: item.weaknesses,
+            improvementPlan: item.improvementPlan,
+            riskAssessment: item.riskAssessment,
+            bestPracticeNote: item.bestPracticeNote,
+          })),
+        };
+        localStorage.setItem(draftStorageKey, JSON.stringify(payload));
+      } catch {
+        // storage quota exceeded or disabled
+      }
+    }, 1000);
+
+    return () => clearTimeout(timeout);
+  }, [activeAllItems, draftStorageKey]);
+
+  const handleRestoreDraft = () => {
+    if (!hasRecoverableDraft) return;
+    const draftMap = new Map(hasRecoverableDraft.data.map((d) => [d.code, d]));
+    setActiveAllItems((prev) =>
+      prev.map((item) => {
+        const d = draftMap.get(item.code);
+        if (!d) return item;
+        return {
+          ...item,
+          selfScore: d.selfScore > 0 ? d.selfScore : item.selfScore,
+          strengths: d.strengths ?? item.strengths,
+          weaknesses: d.weaknesses ?? item.weaknesses,
+          improvementPlan: d.improvementPlan ?? item.improvementPlan,
+          riskAssessment: d.riskAssessment ?? item.riskAssessment,
+          bestPracticeNote: d.bestPracticeNote ?? item.bestPracticeNote,
+        };
+      })
+    );
+    setHasRecoverableDraft(null);
+    showToast("กู้คืนข้อมูลแบบร่างสำเร็จแล้ว", "success", "กู้คืนข้อมูล");
+  };
+
+  const handleDismissDraft = () => {
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.removeItem(draftStorageKey);
+      } catch {}
+    }
+    setHasRecoverableDraft(null);
+  };
+
   // Handle Score Change
   const handleScoreChange = (code: string, newScore: number) => {
     setActiveAllItems((prev) =>
@@ -301,6 +409,16 @@ export function EvaluationsModule({
           return isCurrentStd ? { ...item, status: targetStatus } : item;
         })
       );
+
+      // On successful save or submit to server, remove local backup draft
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.removeItem(draftStorageKey);
+        } catch {
+          // ignore
+        }
+      }
+      setHasRecoverableDraft(null);
 
       const successText =
         targetStatus === "submitted"
@@ -546,6 +664,74 @@ export function EvaluationsModule({
           </div>
         </div>
       </div>
+
+      {/* Recoverable Draft Backup Banner */}
+      {hasRecoverableDraft && (
+        <div
+          className="panel"
+          style={{
+            background: "#fffbeb",
+            border: "1px solid #fde68a",
+            borderRadius: 12,
+            padding: "12px 18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <RotateCcw size={18} color="#d97706" />
+            <div style={{ fontSize: 13, color: "#92400e" }}>
+              <strong>พบข้อมูลแบบร่างที่บันทึกสำรองไว้ในอุปกรณ์นี้</strong> ({hasRecoverableDraft.count} ตัวชี้วัด • สำรองล่าสุดเมื่อ{" "}
+              {new Date(hasRecoverableDraft.savedAt).toLocaleDateString("th-TH")}{" "}
+              {new Date(hasRecoverableDraft.savedAt).toLocaleTimeString("th-TH", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+              )
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button
+              type="button"
+              onClick={handleRestoreDraft}
+              className="primary-button"
+              style={{
+                padding: "6px 14px",
+                fontSize: 12,
+                background: "#d97706",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <RotateCcw size={14} />
+              กู้คืนแบบร่าง
+            </button>
+            <button
+              type="button"
+              onClick={handleDismissDraft}
+              style={{
+                padding: "6px 12px",
+                fontSize: 12,
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: "#ffffff",
+                color: "#64748b",
+                cursor: "pointer",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Trash2 size={13} />
+              ละทิ้ง
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Alert message */}
       {statusMessage && (

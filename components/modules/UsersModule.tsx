@@ -318,9 +318,21 @@ export function UsersModule({
 
     try {
       if (sb) {
+        const {
+          data: { session },
+        } = await sb.auth.getSession();
+
+        const headers: Record<string, string> = {
+          "Content-Type": "application/json",
+        };
+
+        if (session?.access_token) {
+          headers["Authorization"] = `Bearer ${session.access_token}`;
+        }
+
         const res = await fetch("/api/admin/create-user", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({
             email: inviteEmail.trim(),
             password: invitePassword.trim(),
